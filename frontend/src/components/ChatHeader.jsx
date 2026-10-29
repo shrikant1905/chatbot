@@ -25,6 +25,7 @@ export function ChatHeader({
 }) {
   const [models, setModels] = useState([
     { id: 'qwen3:1.7b', name: 'Qwen 3 (1.7B)', description: 'Fast local reasoning model on VPS', tag: 'Fast' },
+    { id: 'qwen2.5vl:3b', name: 'Qwen 2.5-VL (3B)', description: 'Multimodal Vision-Language for Image Analysis & OCR', tag: 'Vision' },
     { id: 'kiaan-pro', name: 'Kiaan Pro 3.5', description: 'Optimized for high-speed conversational workflows', tag: 'Balanced' },
     { id: 'kiaan-code', name: 'Kiaan Code Alpha', description: 'Specialized checkpoint tuned for multi-file system design', tag: 'Code' }
   ]);

@@ -757,3 +757,211 @@
   font-style: italic;
   color: var(--text-muted);
 }
+
+
+/* Universal AI Gateway Action Cards */
+.action-card-container {
+  background: var(--bg-surface, #1e1e2d);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 16px;
+  margin: 14px 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-size: 0.86rem;
+  transition: all 0.2s ease;
+}
+
+.action-card-container.approval-pending {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.action-card-container.action-done {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.action-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.action-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-card-icon {
+  color: var(--brand-primary, #6366f1);
+  font-size: 1.1rem;
+}
+
+.action-card-tool-name {
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  font-family: monospace;
+  font-size: 0.88rem;
+}
+
+.action-card-domain-badge {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--brand-primary, #818cf8);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.action-card-status-badge span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.action-card-message {
+  margin: 10px 0 6px 0;
+  color: var(--text-secondary, #d1d5db);
+  line-height: 1.45;
+}
+
+.action-card-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #9ca3af);
+  margin: 10px 0 6px 0;
+  letter-spacing: 0.05em;
+}
+
+.action-card-params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.action-card-param-item {
+  display: flex;
+  gap: 6px;
+  font-size: 0.8rem;
+  overflow: hidden;
+}
+
+.param-key {
+  color: var(--text-muted, #9ca3af);
+  font-family: monospace;
+}
+
+.param-val {
+  color: var(--text-primary, #ffffff);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.action-card-result-section {
+  margin-top: 10px;
+}
+
+.action-card-result-json {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.76rem;
+  color: #a7f3d0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.action-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.action-btn-approve {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.action-btn-approve:hover {
+  background: #059669;
+}
+
+.action-btn-reject {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--text-muted, #9ca3af);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.15));
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-btn-reject:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.action-card-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  border-radius: 6px;
+  font-size: 0.78rem;
+}

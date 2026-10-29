@@ -184,6 +184,27 @@ export const apiClient = {
   deleteMemory: (id) => request(`/memory/${id}`, { method: 'DELETE' }),
 
   // Feedback
+  // Universal Gateway API
+  getGatewayProducts: () => request('/gateway/products'),
+  getGatewayTools: (domain) => request(`/gateway/tools${domain ? `?domain=${domain}` : ''}`),
+  executeTool: (toolName, parameters = {}) =>
+    request('/gateway/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({ toolName, parameters })
+    }),
+  approveTool: (toolName, parameters = {}) =>
+    request('/gateway/tools/approve', {
+      method: 'POST',
+      body: JSON.stringify({ toolName, parameters })
+    }),
+  getQueueStatus: () => request('/gateway/queue/status'),
+  analyzeImage: (file, prompt) => {
+    const formData = new FormData();
+    if (file instanceof File) formData.append('image', file);
+    if (prompt) formData.append('prompt', prompt);
+    return request('/ai/image/analyze', { method: 'POST', body: formData });
+  },
+
   submitFeedback: (messageId, rating, comment = null) =>
     request('/feedback', {
       method: 'POST',

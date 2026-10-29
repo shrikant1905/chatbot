@@ -7,6 +7,8 @@ import { AttachmentController } from '../controllers/attachmentController.js';
 import { SearchController } from '../controllers/searchController.js';
 import { MemoryController } from '../controllers/memoryController.js';
 import { FeedbackController } from '../controllers/feedbackController.js';
+import { GatewayController } from '../controllers/gatewayController.js';
+import { VisionController } from '../controllers/visionController.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
@@ -14,6 +16,7 @@ export const apiRouter = Router();
 
 // Public / Health & Models
 apiRouter.get('/health', HealthController.check);
+apiRouter.get('/health/benchmark', HealthController.benchmark);
 apiRouter.get('/models', ModelController.listModels);
 
 // Authenticated Routes
@@ -51,4 +54,15 @@ apiRouter.delete('/memory/:id', MemoryController.deleteMemory);
 
 // Feedback
 apiRouter.post('/feedback', FeedbackController.submit);
+
+// Universal AI Gateway (Products, Tools, Concurrency Queue)
+apiRouter.get('/gateway/products', GatewayController.listProducts);
+apiRouter.post('/gateway/register-product', GatewayController.registerProduct);
+apiRouter.get('/gateway/tools', GatewayController.listTools);
+apiRouter.post('/gateway/tools/execute', GatewayController.executeTool);
+apiRouter.post('/gateway/tools/approve', GatewayController.approveTool);
+apiRouter.get('/gateway/queue/status', GatewayController.getQueueMetrics);
+
+// Multimodal Vision & Image Analysis Endpoint
+apiRouter.post('/ai/image/analyze', upload.single('image'), VisionController.analyzeImage);
 

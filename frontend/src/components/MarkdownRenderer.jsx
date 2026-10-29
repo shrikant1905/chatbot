@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { FiCopy, FiCheck } from 'react-icons/fi';
+import { ActionCard } from './ActionCard';
 
 export function CodeBlock({ language, code }) {
   const [copied, setCopied] = useState(false);
@@ -143,7 +144,7 @@ export function MarkdownRenderer({ content }) {
   }
 
   // Block parsing: split by code blocks ```...```
-  const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
+  const codeBlockRegex = /(?:```([a-zA-Z0-9_-]*)\n([\s\S]*?)```|:::action_card\n([\s\S]*?):::)/g;
   const blocks = [];
   let lastIndex = 0;
   let match;
@@ -157,9 +158,10 @@ export function MarkdownRenderer({ content }) {
     }
 
     blocks.push({
-      type: 'code',
+      type: match[3] !== undefined ? 'action_card' : 'code',
+      rawData: match[3] ? match[3].trim() : null,
       language: match[1] || 'text',
-      code: match[2].trimEnd()
+      code: (match[2] || '').trimEnd()
     });
 
     lastIndex = codeBlockRegex.lastIndex;
@@ -181,6 +183,10 @@ export function MarkdownRenderer({ content }) {
         </details>
       )}
       {blocks.map((block, bIdx) => {
+        if (block.type === 'action_card') {
+          return <ActionCard key={`action-${bIdx}`} rawData={block.rawData} />;
+        }
+
         if (block.type === 'code') {
           return (
             <CodeBlock

@@ -1,0 +1,954 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "organization": "Kiaan Technology",
+  "description": "Universal AI Function Library — 50 tool contracts for enterprise execution.",
+  "tools": [
+    {
+      "type": "function",
+      "domain": "sales",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "crm_search_leads",
+        "description": "Searches for leads, prospects, and opportunities by company, name, email, or status.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "description": "Search keyword (e.g. Acme Corp, John)" },
+            "status": { "type": "string", "enum": ["all", "new", "contacted", "qualified", "lost"], "default": "all" },
+            "limit": { "type": "integer", "default": 5, "maximum": 20 }
+          },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "sales",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "crm_create_lead",
+        "description": "Creates a new business lead in the sales pipeline with contact and source details.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "description": "Full name of the contact" },
+            "company": { "type": "string", "description": "Company name" },
+            "email": { "type": "string", "description": "Contact email address" },
+            "phone": { "type": "string", "description": "Phone number" },
+            "source": { "type": "string", "enum": ["website", "referral", "cold_outreach", "event"], "default": "website" },
+            "estimatedValue": { "type": "number", "description": "Estimated deal value in USD" }
+          },
+          "required": ["name", "email"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "sales",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "crm_update_deal_stage",
+        "description": "Moves a deal forward or backward through the sales pipeline stages.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dealId": { "type": "string", "description": "Unique identifier of the deal" },
+            "newStage": { "type": "string", "enum": ["discovery", "demo", "proposal", "negotiation", "closed_won", "closed_lost"] },
+            "probabilityPercent": { "type": "integer", "minimum": 0, "maximum": 100 }
+          },
+          "required": ["dealId", "newStage"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "sales",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "crm_log_interaction",
+        "description": "Logs a touchpoint with a client such as a phone call, meeting notes, or follow-up reminder.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "contactId": { "type": "string", "description": "Unique identifier of contact or lead" },
+            "channel": { "type": "string", "enum": ["phone", "email", "meeting", "whatsapp"] },
+            "summary": { "type": "string", "description": "Key takeaways from the interaction" },
+            "nextFollowUpDate": { "type": "string", "description": "ISO date YYYY-MM-DD for follow-up" }
+          },
+          "required": ["contactId", "channel", "summary"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "sales",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "crm_summarize_account",
+        "description": "Retrieves an account overview including active deals, total revenue, and recent activities.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "accountId": { "type": "string", "description": "Account or Company identifier" }
+          },
+          "required": ["accountId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "marketing",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "mkt_draft_campaign_copy",
+        "description": "Generates structured ad copy, headline variations, and CTAs for a product campaign.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "productName": { "type": "string" },
+            "targetAudience": { "type": "string", "description": "e.g. Small business owners, CTOs" },
+            "platform": { "type": "string", "enum": ["google_ads", "linkedin", "meta", "twitter"] },
+            "tone": { "type": "string", "enum": ["professional", "urgent", "casual", "innovative"], "default": "professional" }
+          },
+          "required": ["productName", "platform"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "marketing",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "mkt_draft_newsletter",
+        "description": "Drafts an email newsletter layout with subject line, header, body sections, and CTA.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "topic": { "type": "string", "description": "Core theme or announcement" },
+            "keyHighlights": { "type": "array", "items": { "type": "string" } },
+            "ctaUrl": { "type": "string" }
+          },
+          "required": ["topic", "keyHighlights"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "marketing",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "mkt_get_campaign_analytics",
+        "description": "Retrieves performance metrics (impressions, clicks, conversions, spend, CAC) for an active campaign.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "campaignId": { "type": "string" },
+            "metrics": { "type": "array", "items": { "type": "string" }, "default": ["clicks", "conversions", "spend"] }
+          },
+          "required": ["campaignId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "marketing",
+      "approvalRequired": "confirmation_required",
+      "idempotent": false,
+      "function": {
+        "name": "mkt_schedule_broadcast",
+        "description": "Schedules an email or push notification broadcast to an audience segment at a future time.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "segmentId": { "type": "string" },
+            "subject": { "type": "string" },
+            "scheduledTimestamp": { "type": "string", "description": "ISO 8601 timestamp" }
+          },
+          "required": ["segmentId", "subject", "scheduledTimestamp"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "marketing",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "mkt_segment_audience",
+        "description": "Computes audience size and filters users based on behavioral and purchase filters.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "minPurchases": { "type": "integer" },
+            "inactiveDays": { "type": "integer" },
+            "country": { "type": "string" }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "billing",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "billing_get_subscription",
+        "description": "Fetches current plan, seat count, renewal date, and payment status for a tenant.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "tenantId": { "type": "string" }
+          },
+          "required": ["tenantId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "billing",
+      "approvalRequired": "confirmation_required",
+      "idempotent": false,
+      "function": {
+        "name": "billing_create_invoice",
+        "description": "Generates a draft or finalized invoice with itemized charges and taxes. Requires user confirmation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "customerId": { "type": "string" },
+            "lineItems": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "description": { "type": "string" },
+                  "quantity": { "type": "number" },
+                  "unitPrice": { "type": "number" }
+                },
+                "required": ["description", "quantity", "unitPrice"]
+              }
+            },
+            "dueDate": { "type": "string", "description": "YYYY-MM-DD" }
+          },
+          "required": ["customerId", "lineItems", "dueDate"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "billing",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "billing_calculate_proration",
+        "description": "Calculates the exact prorated credit and delta charge when upgrading or downgrading plans in Node.js.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "currentPlanPrice": { "type": "number" },
+            "newPlanPrice": { "type": "number" },
+            "daysRemainingInCycle": { "type": "integer" },
+            "totalDaysInCycle": { "type": "integer", "default": 30 }
+          },
+          "required": ["currentPlanPrice", "newPlanPrice", "daysRemainingInCycle"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "billing",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "billing_fetch_receipt",
+        "description": "Retrieves the download link and payment reference for a completed transaction.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "paymentId": { "type": "string" }
+          },
+          "required": ["paymentId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "billing",
+      "approvalRequired": "admin_authorization_required",
+      "idempotent": false,
+      "function": {
+        "name": "billing_flag_disputed_charge",
+        "description": "Flags a transaction for dispute, pausing automated billing and alerting finance admins.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "transactionId": { "type": "string" },
+            "reason": { "type": "string" }
+          },
+          "required": ["transactionId", "reason"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "billing",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "billing_export_revenue_report",
+        "description": "Computes total revenue, refunds, and net MRR over a specified date range.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "startDate": { "type": "string", "description": "YYYY-MM-DD" },
+            "endDate": { "type": "string", "description": "YYYY-MM-DD" }
+          },
+          "required": ["startDate", "endDate"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "inventory",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "inv_check_stock",
+        "description": "Checks the live inventory level across warehouse locations for one or more SKUs.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "sku": { "type": "string" },
+            "warehouseId": { "type": "string", "description": "Optional specific warehouse ID" }
+          },
+          "required": ["sku"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "inventory",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "inv_reserve_items",
+        "description": "Puts a temporary reservation on items for an order to prevent double-selling.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "orderId": { "type": "string" },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sku": { "type": "string" },
+                  "quantity": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["sku", "quantity"]
+              }
+            }
+          },
+          "required": ["orderId", "items"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "inventory",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "inv_list_low_stock",
+        "description": "Retrieves all catalog items where available stock is below reorder thresholds.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "threshold": { "type": "integer", "default": 10 }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "inventory",
+      "approvalRequired": "confirmation_required",
+      "idempotent": false,
+      "function": {
+        "name": "inv_update_price",
+        "description": "Updates the retail or wholesale price of an existing SKU. Requires human confirmation.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "sku": { "type": "string" },
+            "newPrice": { "type": "number", "minimum": 0 },
+            "currency": { "type": "string", "default": "USD" }
+          },
+          "required": ["sku", "newPrice"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "inventory",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "inv_track_shipment",
+        "description": "Queries carrier logistics API for location and delivery updates on a tracking number.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "trackingNumber": { "type": "string" },
+            "carrier": { "type": "string", "enum": ["fedex", "dhl", "ups", "delhivery", "bluedart", "auto"] }
+          },
+          "required": ["trackingNumber"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "inventory",
+      "approvalRequired": "confirmation_required",
+      "idempotent": false,
+      "function": {
+        "name": "inv_receive_purchase_order",
+        "description": "Records receipt of physical stock against an outstanding Purchase Order.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "poNumber": { "type": "string" },
+            "receivedItems": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sku": { "type": "string" },
+                  "receivedQty": { "type": "integer" }
+                },
+                "required": ["sku", "receivedQty"]
+              }
+            }
+          },
+          "required": ["poNumber", "receivedItems"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "hr",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "hr_submit_leave_request",
+        "description": "Submits a paid, unpaid, or sick leave request to the employee's manager.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "employeeId": { "type": "string" },
+            "leaveType": { "type": "string", "enum": ["annual", "sick", "casual", "maternity", "paternity"] },
+            "startDate": { "type": "string", "description": "YYYY-MM-DD" },
+            "endDate": { "type": "string", "description": "YYYY-MM-DD" },
+            "reason": { "type": "string" }
+          },
+          "required": ["employeeId", "leaveType", "startDate", "endDate"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "hr",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "hr_get_leave_balance",
+        "description": "Returns remaining vacation days, accrued sick days, and pending leave counts.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "employeeId": { "type": "string" }
+          },
+          "required": ["employeeId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "hr",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "hr_query_handbook",
+        "description": "Performs scoped semantic search over internal employment guidelines and benefits.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "question": { "type": "string", "description": "e.g. What is our remote work stipend policy?" }
+          },
+          "required": ["question"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "hr",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "hr_schedule_interview",
+        "description": "Books a calendar interview slot between a job applicant and hiring panel.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "candidateName": { "type": "string" },
+            "interviewerEmail": { "type": "string" },
+            "dateTime": { "type": "string", "description": "ISO 8601 string" },
+            "round": { "type": "string", "enum": ["screening", "technical", "cultural", "final"] }
+          },
+          "required": ["candidateName", "interviewerEmail", "dateTime"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "hr",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "hr_log_attendance",
+        "description": "Records clock-in or clock-out timestamps with optional IP/location verification.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "employeeId": { "type": "string" },
+            "action": { "type": "string", "enum": ["check_in", "check_out"] }
+          },
+          "required": ["employeeId", "action"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "hr",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "hr_get_paystub_summary",
+        "description": "Fetches gross pay, deductions, tax withholding, and net salary for a given month.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "employeeId": { "type": "string" },
+            "monthYear": { "type": "string", "description": "YYYY-MM format, e.g. 2026-10" }
+          },
+          "required": ["employeeId", "monthYear"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "support",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "support_create_ticket",
+        "description": "Opens an authenticated helpdesk support ticket on behalf of a customer.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "customerId": { "type": "string" },
+            "subject": { "type": "string" },
+            "priority": { "type": "string", "enum": ["low", "normal", "high", "urgent"], "default": "normal" },
+            "description": { "type": "string" }
+          },
+          "required": ["customerId", "subject", "description"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "support",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "support_get_ticket_details",
+        "description": "Fetches message history, attachments, internal notes, and SLA status for a ticket.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ticketId": { "type": "string" }
+          },
+          "required": ["ticketId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "support",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "support_update_ticket",
+        "description": "Updates ticket status (open, pending, solved, closed) and assigns support agents.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ticketId": { "type": "string" },
+            "status": { "type": "string", "enum": ["open", "pending", "solved", "closed"] },
+            "internalNote": { "type": "string" }
+          },
+          "required": ["ticketId", "status"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "support",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "support_search_kb",
+        "description": "Queries the public help center for troubleshooting articles and FAQ guides.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "limit": { "type": "integer", "default": 3 }
+          },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "support",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "support_escalate_ticket",
+        "description": "Transfers an unresolved or urgent customer ticket directly to senior staff.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ticketId": { "type": "string" },
+            "escalationReason": { "type": "string" },
+            "targetDepartment": { "type": "string", "enum": ["engineering", "billing", "security", "management"] }
+          },
+          "required": ["ticketId", "escalationReason", "targetDepartment"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "support",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "support_analyze_sentiment",
+        "description": "Scores customer sentiment across a conversation thread to detect frustration.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "conversationId": { "type": "string" }
+          },
+          "required": ["conversationId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "analytics",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "analytics_get_kpi_summary",
+        "description": "Aggregates primary high-level executive KPIs (Active Users, MRR, Conversion, Churn).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "timeframe": { "type": "string", "enum": ["today", "last_7_days", "this_month", "this_quarter", "this_year"], "default": "this_month" }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "analytics",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "analytics_calculate_churn",
+        "description": "Calculates customer and revenue churn rate for a specific cohort or date range.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cohortMonth": { "type": "string", "description": "YYYY-MM" }
+          },
+          "required": ["cohortMonth"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "analytics",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "analytics_query_mrr_growth",
+        "description": "Returns month-over-month MRR changes, new expansion MRR, and churned MRR.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "months": { "type": "integer", "default": 6, "maximum": 24 }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "analytics",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "analytics_forecast_inventory",
+        "description": "Estimates when a given product SKU will run out of stock based on recent burn rate.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "sku": { "type": "string" },
+            "lookbackDays": { "type": "integer", "default": 30 }
+          },
+          "required": ["sku"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "analytics",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "analytics_compare_sales",
+        "description": "Performs side-by-side comparative analysis of sales revenue between two periods.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "periodA": { "type": "string", "description": "e.g. 2026-Q1" },
+            "periodB": { "type": "string", "description": "e.g. 2026-Q2" }
+          },
+          "required": ["periodA", "periodB"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "analytics",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "analytics_detect_traffic_anomalies",
+        "description": "Scans application metrics for abnormal deviations (e.g. sudden drop in orders).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "metricName": { "type": "string", "enum": ["api_errors", "login_failures", "order_volume", "cart_abandonment"] },
+            "windowHours": { "type": "integer", "default": 24 }
+          },
+          "required": ["metricName"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "analytics",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "analytics_get_user_retention",
+        "description": "Returns retention curves and active usage percentages for a designated feature.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "featureId": { "type": "string" }
+          },
+          "required": ["featureId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "analytics",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "analytics_export_csv_dataset",
+        "description": "Generates a background downloadable CSV export link for a specified table or query.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dataset": { "type": "string", "enum": ["leads", "invoices", "inventory", "tickets", "payroll"] },
+            "filters": { "type": "object" }
+          },
+          "required": ["dataset"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "automation",
+      "approvalRequired": "confirmation_required",
+      "idempotent": false,
+      "function": {
+        "name": "auto_trigger_webhook",
+        "description": "Sends an authenticated event payload to an external webhook endpoint.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "webhookId": { "type": "string" },
+            "eventPayload": { "type": "object" }
+          },
+          "required": ["webhookId", "eventPayload"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "automation",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "auto_schedule_delayed_action",
+        "description": "Queues an asynchronous background job into BullMQ to execute at a designated timestamp.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "actionName": { "type": "string" },
+            "executeAt": { "type": "string", "description": "ISO 8601 string" },
+            "payload": { "type": "object" }
+          },
+          "required": ["actionName", "executeAt"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "automation",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "auto_send_notification",
+        "description": "Dispatches an alert message to a user or channel via Slack, Email, or WhatsApp.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "channel": { "type": "string", "enum": ["slack", "email", "sms", "whatsapp"] },
+            "recipient": { "type": "string" },
+            "message": { "type": "string" }
+          },
+          "required": ["channel", "recipient", "message"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "automation",
+      "approvalRequired": "none",
+      "idempotent": true,
+      "function": {
+        "name": "auto_validate_contract_rules",
+        "description": "Verifies that legal or business documents comply with mandatory contractual clauses.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "documentText": { "type": "string" },
+            "requiredClauses": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["documentText", "requiredClauses"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "automation",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "auto_sync_external_crm",
+        "description": "Synchronizes contact or deal records with third-party software (HubSpot, Salesforce, Zoho).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "targetSystem": { "type": "string", "enum": ["hubspot", "salesforce", "zoho"] },
+            "entityType": { "type": "string", "enum": ["contact", "deal", "company"] },
+            "localEntityId": { "type": "string" }
+          },
+          "required": ["targetSystem", "entityType", "localEntityId"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "automation",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "auto_record_audit_log",
+        "description": "Records an immutable compliance entry detailing who performed which action and when.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "action": { "type": "string" },
+            "entity": { "type": "string" },
+            "metadata": { "type": "object" }
+          },
+          "required": ["action", "entity"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "automation",
+      "approvalRequired": "none",
+      "idempotent": false,
+      "function": {
+        "name": "auto_create_approval_request",
+        "description": "Opens a human-in-the-loop approval ticket for actions requiring manager sign-off.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "actionDescription": { "type": "string" },
+            "requestedBy": { "type": "string" },
+            "approverRole": { "type": "string", "enum": ["admin", "finance_manager", "hr_manager", "warehouse_manager"] }
+          },
+          "required": ["actionDescription", "approverRole"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "domain": "automation",
+      "approvalRequired": "confirmation_required",
+      "idempotent": false,
+      "function": {
+        "name": "auto_cancel_scheduled_job",
+        "description": "Cancels an upcoming queued BullMQ background task before it executes.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "jobId": { "type": "string" }
+          },
+          "required": ["jobId"]
+        }
+      }
+    }
+  ]
+}
+
