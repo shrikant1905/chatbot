@@ -269,3 +269,4 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
     </div>
   );
 }
+

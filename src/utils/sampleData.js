@@ -173,3 +173,4 @@ export const AVAILABLE_MODELS = [
   { id: 'kiaan-pro', name: 'Kiaan Pro 3.5', description: 'Optimized for high-speed conversational workflows', tag: 'Balanced' },
   { id: 'kiaan-code', name: 'Kiaan Code Alpha', description: 'Specialized checkpoint tuned for multi-file system design', tag: 'Code' }
 ];
+

@@ -7,3 +7,4 @@ export function AppLayout({ children }) {
     </div>
   );
 }
+

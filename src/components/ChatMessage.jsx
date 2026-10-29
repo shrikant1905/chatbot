@@ -105,3 +105,4 @@ export function ChatMessage({ message, onRetry, onRegenerate }) {
     </div>
   );
 }
+

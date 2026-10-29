@@ -137,3 +137,4 @@ This phase is strictly **Frontend UI Only**:
 - Demonstration conversations are managed in client-side state.
 - Submissions add the prompt to local conversation state along with a clearly labeled UI preview notice.
 - When ready for full backend integration, the state in [`src/pages/ChatPage.jsx`](file:///c:/kiaan%20project/jonny/chatbot/src/pages/ChatPage.jsx) can be connected directly to your API service (e.g. streaming SSE endpoints, WebSocket, or REST API) without modifying component layouts.
+
