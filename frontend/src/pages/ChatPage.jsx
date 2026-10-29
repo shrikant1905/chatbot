@@ -22,8 +22,8 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
 
   // Model Selection
   const [selectedModel, setSelectedModel] = useState({
-    id: 'kiaan-ultra',
-    name: 'Kiaan Ultra 4.5'
+    id: 'qwen3:1.7b',
+    name: 'Qwen 3 (1.7B)'
   });
 
   // Composer & Generation State

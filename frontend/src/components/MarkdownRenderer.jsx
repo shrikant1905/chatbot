@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { FiCopy, FiCheck } from 'react-icons/fi';
 
@@ -132,17 +133,26 @@ function parseInline(text) {
 export function MarkdownRenderer({ content }) {
   if (!content) return null;
 
+  // Extract <think>...</think> if present (common in Qwen / DeepSeek reasoning models)
+  let cleanContent = content;
+  let thinkContent = null;
+  const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+  if (thinkMatch) {
+    thinkContent = thinkMatch[1].trim();
+    cleanContent = content.replace(/<think>[\s\S]*?(?:<\/think>|$)/i, '').trim();
+  }
+
   // Block parsing: split by code blocks ```...```
   const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
   const blocks = [];
   let lastIndex = 0;
   let match;
 
-  while ((match = codeBlockRegex.exec(content)) !== null) {
+  while ((match = codeBlockRegex.exec(cleanContent)) !== null) {
     if (match.index > lastIndex) {
       blocks.push({
         type: 'text',
-        content: content.substring(lastIndex, match.index)
+        content: cleanContent.substring(lastIndex, match.index)
       });
     }
 
@@ -155,15 +165,21 @@ export function MarkdownRenderer({ content }) {
     lastIndex = codeBlockRegex.lastIndex;
   }
 
-  if (lastIndex < content.length) {
+  if (lastIndex < cleanContent.length) {
     blocks.push({
       type: 'text',
-      content: content.substring(lastIndex)
+      content: cleanContent.substring(lastIndex)
     });
   }
 
   return (
     <div className="markdown-render-flow">
+      {thinkContent && (
+        <details className="think-box" open={!cleanContent}>
+          <summary className="think-summary">💭 Thinking Process {cleanContent ? '(Click to view)' : '...'}</summary>
+          <div className="think-content">{thinkContent}</div>
+        </details>
+      )}
       {blocks.map((block, bIdx) => {
         if (block.type === 'code') {
           return (

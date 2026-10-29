@@ -729,3 +729,31 @@
   line-height: 1.5;
   margin-top: 8px;
 }
+
+
+/* AI Reasoning / Thinking Block (Qwen 3) */
+.think-box {
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-left: 3px solid var(--brand-primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin: 10px 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.think-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.think-content {
+  margin-top: 8px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--text-muted);
+}

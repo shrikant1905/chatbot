@@ -24,7 +24,7 @@ export function ChatHeader({
   onSelectModel
 }) {
   const [models, setModels] = useState([
-    { id: 'kiaan-ultra', name: 'Kiaan Ultra 4.5', description: 'Most capable model for deep reasoning, coding, and analysis', tag: 'Fast & Smart' },
+    { id: 'qwen3:1.7b', name: 'Qwen 3 (1.7B)', description: 'Fast local reasoning model on VPS', tag: 'Fast' },
     { id: 'kiaan-pro', name: 'Kiaan Pro 3.5', description: 'Optimized for high-speed conversational workflows', tag: 'Balanced' },
     { id: 'kiaan-code', name: 'Kiaan Code Alpha', description: 'Specialized checkpoint tuned for multi-file system design', tag: 'Code' }
   ]);
@@ -43,6 +43,9 @@ export function ChatHeader({
         if (!isMounted) return;
         if (data.models && data.models.length > 0) {
           setModels(data.models);
+          if (selectedModel?.id === 'kiaan-ultra' && data.models[0]?.id && !data.models[0].id.startsWith('kiaan-')) {
+            onSelectModel?.(data.models[0]);
+          }
         }
         setProviderStatus({
           provider: data.provider,

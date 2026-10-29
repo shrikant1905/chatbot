@@ -5,7 +5,7 @@ export class OllamaProvider extends AiProviderInterface {
   constructor(config) {
     super('ollama');
     this.baseUrl = (config.ollamaBaseUrl || 'http://127.0.0.1:11434').replace(/\/+$/, '');
-    this.defaultModel = config.ollamaDefaultModel || 'llama3:latest';
+    this.defaultModel = config.ollamaDefaultModel || 'qwen3:1.7b';
   }
 
   async checkAvailability() {
@@ -56,28 +56,42 @@ export class OllamaProvider extends AiProviderInterface {
   }
 
   async generateResponse({ model, messages, attachments = [], userMemories = [], stream = false, onChunk, signal }) {
-    const selectedModel = model || this.defaultModel;
+    let selectedModel = model || this.defaultModel;
+
+    // Gracefully map placeholder/mock IDs to the real default model configured on the server
+    if (typeof selectedModel === 'string' && selectedModel.startsWith('kiaan-')) {
+      selectedModel = this.defaultModel;
+    }
 
     // Convert messages for Ollama format
     const formattedMessages = [];
 
-    // If persistent user memories exist, prepend them into a system instruction message
+    // Default system instruction for high speed and direct answers
+    const systemPromptParts = [
+      'You are Kiaan AI, an intelligent, helpful, and fast assistant.',
+      'Be direct, clear, and concise. Answer immediately without unnecessary rambling.'
+    ];
+
     if (userMemories && userMemories.length > 0) {
       const memoryPrompt = userMemories
         .map((m) => `- ${m.key_name}: ${m.value_text}`)
         .join('\n');
-      formattedMessages.push({
-        role: 'system',
-        content: `Relevant persistent user context:\n${memoryPrompt}`
-      });
+      systemPromptParts.push(`Relevant user context:\n${memoryPrompt}`);
     }
+
+    formattedMessages.push({
+      role: 'system',
+      content: systemPromptParts.join('\n\n')
+    });
 
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
       const isLastMessage = i === messages.length - 1;
       const formatted = {
         role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
-        content: msg.content
+        content: msg.role === 'assistant' && !isLastMessage && msg.content
+          ? msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+          : msg.content
       };
 
       // If last message has image attachments, encode image files into base64 for multimodal vision models
@@ -105,7 +119,13 @@ export class OllamaProvider extends AiProviderInterface {
     const payload = {
       model: selectedModel,
       messages: formattedMessages,
-      stream: Boolean(stream)
+      stream: Boolean(stream),
+      keep_alive: '24h',
+      options: {
+        num_thread: 8,
+        num_ctx: 2048,
+        temperature: 0.7
+      }
     };
 
     let response;
@@ -180,4 +200,3 @@ export class OllamaProvider extends AiProviderInterface {
     }
   }
 }
-
