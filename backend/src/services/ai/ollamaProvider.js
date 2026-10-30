@@ -138,10 +138,11 @@ export class OllamaProvider extends AiProviderInterface {
       inventory: ['stock', 'inventory', 'sku', 'warehouse', 'reorder', 'shipment'],
       billing: ['invoice', 'billing', 'prorat', 'receipt', 'charge', 'subscription', 'mrr'],
       hr: ['leave', 'attendance', 'vacation', 'paystub', 'salary', 'handbook', 'interview'],
-      support: ['ticket', 'helpdesk', 'support', 'escalat', 'complaint'],
-      marketing: ['campaign', 'newsletter', 'broadcast', 'segment'],
-      analytics: ['churn', 'kpi', 'revenue report', 'analytics', 'forecast', 'retention'],
-      automation: ['webhook', 'delayed action', 'scheduled job', 'contract rule']
+      project: ['task', 'milestone', 'sprint', 'roadmap', 'jira', 'assignee', 'blocker'],
+      support: ['ticket', 'zendesk', 'escalate', 'complaint', 'customer issue'],
+      analytics: ['metric', 'analytics', 'funnel', 'conversion', 'churn', 'kpi'],
+      marketing: ['campaign', 'newsletter', 'seo', 'ad spend', 'ctr'],
+      documents: ['document', 'pdf', 'contract', 'nda', 'signable', 'agreement']
     };
 
     let matchedDomain = null;
@@ -153,20 +154,27 @@ export class OllamaProvider extends AiProviderInterface {
     }
 
     if (!matchedDomain) {
-      return []; // ZERO tools for 95% of queries -> instant 1-2 second response!
+      return [];
     }
 
-    const domainTools = await ToolRegistry.getToolsForAi(matchedDomain);
-    return domainTools.slice(0, 3); // Max 3 tools to keep prompt lightweight
+    const availableTools = ToolRegistry.list(matchedDomain);
+    return availableTools.slice(0, 3).map((t) => ({
+      type: 'function',
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters
+      }
+    }));
   }
 
-  async _executeOllamaInference({ selectedModel, messages, attachments, userMemories, stream, onChunk, signal }) {
-    // 1. Format messages for Ollama
+  async _executeOllamaInference({ selectedModel, messages, attachments = [], userMemories = [], stream, onChunk, signal }) {
+    // 1. Format messages for Ollama API
     const formattedMessages = [];
 
+    // System instruction: Crisp, fast, and structured like ChatGPT
     const systemPromptParts = [
-      'You are Kiaan AI, an intelligent, helpful, and friendly AI assistant.',
-      'Always respond naturally and match the length and depth of your response to the user\'s prompt:',
+      'You are Kiaan AI, an ultra-fast, highly capable, and intelligent developer workspace assistant.',
       '- For greetings, casual questions, and quick greetings: Be warm, friendly, concise, and direct.',
       '- For complex topics, coding requests, explanations, and creative writing: Provide thorough, comprehensive, well-structured answers with clear explanations and complete code blocks.',
       '- Format your responses cleanly using standard Markdown (headings, lists, bold text, and fenced code blocks with language tags) when appropriate.',
@@ -219,21 +227,22 @@ export class OllamaProvider extends AiProviderInterface {
           }
         }
 
-        // 2. Process Text/Document Attachments (.txt, .md, .json, .csv)
-        const docAttachments = attachments.filter((a) =>
-          a.mime_type?.startsWith('text/') ||
-          a.mime_type === 'application/json' ||
-          a.original_name?.endsWith('.txt') ||
-          a.original_name?.endsWith('.md') ||
-          a.original_name?.endsWith('.json') ||
-          a.original_name?.endsWith('.csv')
+        // 2. Process Text/Document Attachments (Extract Content into Context)
+        const textAttachments = attachments.filter(
+          (a) =>
+            a.mime_type?.startsWith('text/') ||
+            a.mime_type === 'application/json' ||
+            a.original_name?.endsWith('.md') ||
+            a.original_name?.endsWith('.txt') ||
+            a.original_name?.endsWith('.csv')
         );
-        for (const doc of docAttachments) {
+        for (const doc of textAttachments) {
           try {
-            const textContent = await fs.readFile(doc.storage_path, 'utf-8');
-            formatted.content += `\n\n--- [Attached Document: ${doc.original_name}] ---\n${textContent.slice(0, 10000)}\n--- [End of Document] ---`;
-          } catch (readErr) {
-            console.warn(`Could not read document attachment ${doc.filename}:`, readErr.message);
+            const docContent = await fs.readFile(doc.storage_path, 'utf8');
+            const truncated = docContent.slice(0, 15000);
+            formatted.content += `\n\n--- [Attached File Content: "${doc.original_name}"] ---\n${truncated}\n--- [End of File] ---`;
+          } catch (readDocErr) {
+            console.warn(`Could not read text attachment ${doc.filename}:`, readDocErr.message);
           }
         }
 
@@ -254,14 +263,18 @@ export class OllamaProvider extends AiProviderInterface {
     const lastUserPrompt = messages[messages.length - 1]?.content || '';
     const targetedTools = await this._selectTargetedTools(lastUserPrompt, hasImages);
 
+    // Context size: Default to 2048 to prevent OOM crash on VPS, can be overridden via OLLAMA_NUM_CTX
+    const numCtx = parseInt(process.env.OLLAMA_NUM_CTX, 10) || 2048;
+    const numPredict = parseInt(process.env.OLLAMA_NUM_PREDICT, 10) || 2048;
+
     const payload = {
       model: selectedModel,
       messages: formattedMessages,
       stream: Boolean(stream),
       keep_alive: '24h',
       options: {
-        num_ctx: parseInt(process.env.OLLAMA_NUM_CTX, 10) || 4096,
-        num_predict: parseInt(process.env.OLLAMA_NUM_PREDICT, 10) || 4096,
+        num_ctx: numCtx,
+        num_predict: numPredict,
         temperature: 0.7,
         top_k: 40,
         top_p: 0.9
@@ -272,7 +285,7 @@ export class OllamaProvider extends AiProviderInterface {
       payload.tools = targetedTools;
     }
 
-    console.log(`[LATENCY TRACE] Step 1: Dispatching to Ollama (Model: ${selectedModel}, Tools: ${targetedTools.length}, Images: ${hasImages})`);
+    console.log(`[LATENCY TRACE] Step 1: Dispatching to Ollama (Model: ${selectedModel}, Tools: ${targetedTools.length}, Images: ${hasImages}, Context: ${numCtx})`);
     const fetchStart = performance.now();
     let response;
     try {
@@ -286,8 +299,10 @@ export class OllamaProvider extends AiProviderInterface {
       if (networkErr.name === 'AbortError') {
         throw new Error('Generation was cancelled by user.');
       }
+      const cause = networkErr.cause?.code || networkErr.cause?.message || networkErr.message || 'Connection failed';
+      console.error(`[Ollama Generation Error] ${networkErr.message} (Cause: ${cause}) at ${this.baseUrl}`);
       throw new Error(
-        `Ollama generation failed: unable to connect to Ollama at ${this.baseUrl}. Verify that Ollama is running and has the '${selectedModel}' model installed ('ollama pull ${selectedModel}').`
+        `Ollama generation failed: unable to connect to Ollama at ${this.baseUrl} (${cause}). Verify that Ollama is running on the server and bound to 0.0.0.0:11434.`
       );
     }
 

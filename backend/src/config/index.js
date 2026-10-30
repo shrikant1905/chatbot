@@ -22,8 +22,8 @@ export const config = {
   },
   ai: {
     provider: process.env.AI_PROVIDER || 'ollama',
-    ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
-    ollamaDefaultModel: process.env.OLLAMA_DEFAULT_MODEL || 'qwen3:1.7b',
+    ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://159.198.65.194:11434',
+    ollamaDefaultModel: process.env.OLLAMA_DEFAULT_MODEL || 'gemma3:4b',
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
     openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
@@ -33,4 +33,3 @@ export const config = {
     maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB || '25', 10)
   }
 };
-
