@@ -88,6 +88,7 @@ export class MessageController {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
         res.flushHeaders?.();
 
         // Send user message event
@@ -123,10 +124,15 @@ export class MessageController {
         } catch (genErr) {
           console.error('[AI Generation Error]', genErr.message);
 
+          // Mark user message as cancelled if stopped
+          if (abortController.signal.aborted) {
+            await pool.query('UPDATE messages SET status = ? WHERE id = ?', ['cancelled', userMessage.id]);
+          }
+
           // Save failed message state in DB
           const failedMessage = await MessageService.saveAssistantMessage({
             conversationId,
-            content: `Error: ${genErr.message}`,
+            content: abortController.signal.aborted ? 'Generation was stopped by user.' : `Error: ${genErr.message}`,
             status: abortController.signal.aborted ? 'cancelled' : 'failed',
             model: model || 'kiaan-ultra'
           });
@@ -169,7 +175,7 @@ export class MessageController {
 
           const failedMessage = await MessageService.saveAssistantMessage({
             conversationId,
-            content: `Error: ${genErr.message}`,
+            content: abortController.signal.aborted ? 'Generation was stopped by user.' : `Error: ${genErr.message}`,
             status: 'failed',
             model: model || 'kiaan-ultra'
           });

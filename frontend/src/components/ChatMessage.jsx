@@ -10,10 +10,28 @@ import {
   FiThumbsUp,
   FiThumbsDown,
   FiFileText,
-  FiAlertCircle
+  FiAlertCircle,
+  FiVolume2,
+  FiVolumeX
 } from 'react-icons/fi';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { apiClient } from '../api/client';
+
+export function formatMessageTime(timestamp) {
+  if (!timestamp) return '';
+  try {
+    let str = String(timestamp).trim();
+    // Fix timezone: If raw SQL string without timezone indicator, treat as UTC
+    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(str)) {
+      str = str.replace(' ', 'T') + 'Z';
+    }
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch {
+    return '';
+  }
+}
 
 export function ChatMessage({ message, onRetry, onRegenerate, onShowToast }) {
   const isAssistant = message.role === 'assistant';
@@ -23,6 +41,7 @@ export function ChatMessage({ message, onRetry, onRegenerate, onShowToast }) {
 
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState(null); // 'like' | 'dislike'
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const handleCopyMessage = async () => {
     try {
@@ -51,6 +70,60 @@ export function ChatMessage({ message, onRetry, onRegenerate, onShowToast }) {
     }
   };
 
+  /**
+   * Text-to-Speech (Audio Read Aloud) for assistant messages
+   */
+  const handleToggleSpeak = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      onShowToast?.('Audio speech playback is not supported in this browser.', 'error');
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      onShowToast?.('Voice playback stopped.');
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    // Clean markdown before speaking
+    const textToSpeak = (message.content || '')
+      .replace(/```[\s\S]*?```/g, 'Code block omitted.')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[#*_~>]/g, '')
+      .replace(/:::[\s\S]*?:::/g, '')
+      .replace(/\n+/g, ' ')
+      .trim();
+
+    if (!textToSpeak) return;
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(
+      (v) =>
+        v.lang.startsWith('en-IN') ||
+        v.lang.startsWith('hi-IN') ||
+        v.lang.startsWith('en-US') ||
+        v.lang.startsWith('en')
+    );
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+    onShowToast?.('Reading response aloud...');
+  };
+
   if (isSystemNotice) {
     return (
       <div className="demo-banner-box">
@@ -74,7 +147,7 @@ export function ChatMessage({ message, onRetry, onRegenerate, onShowToast }) {
           {isAssistant && <span className="message-badge">{message.model || 'AI Assistant'}</span>}
           {message.created_at && (
             <span>
-              {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {formatMessageTime(message.created_at)}
             </span>
           )}
         </div>
@@ -191,6 +264,26 @@ export function ChatMessage({ message, onRetry, onRegenerate, onShowToast }) {
 
           {isAssistant && (
             <>
+              {/* Speaker / Read Aloud audio playback */}
+              <button
+                className={`message-action-pill ${isSpeaking ? 'active' : ''}`}
+                onClick={handleToggleSpeak}
+                title={isSpeaking ? 'Stop reading aloud' : 'Read response aloud (Voice)'}
+                aria-label={isSpeaking ? 'Stop reading aloud' : 'Read response aloud'}
+              >
+                {isSpeaking ? (
+                  <>
+                    <FiVolumeX style={{ color: '#ef4444' }} />
+                    <span style={{ color: '#ef4444' }}>Stop</span>
+                  </>
+                ) : (
+                  <>
+                    <FiVolume2 />
+                    <span>Listen</span>
+                  </>
+                )}
+              </button>
+
               {onRegenerate && (
                 <button
                   className="message-action-pill"

@@ -1,5 +1,14 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { FiSend, FiPaperclip, FiMic, FiGlobe, FiX, FiSquare, FiFile, FiCheck } from 'react-icons/fi';
+import {
+  FiSend,
+  FiPaperclip,
+  FiMic,
+  FiGlobe,
+  FiX,
+  FiSquare,
+  FiFile,
+  FiCheck
+} from 'react-icons/fi';
 
 export function MessageComposer({
   input,
@@ -11,20 +20,42 @@ export function MessageComposer({
 }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+
+  // Speech-to-Text (Voice Typing) References
+  const recognitionRef = useRef(null);
+  const isListeningRef = useRef(false);
+  const baseInputRef = useRef('');
+  const accumulatedFinalRef = useRef('');
 
   const [attachedFiles, setAttachedFiles] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
   const [webSearchActive, setWebSearchActive] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceLang, setVoiceLang] = useState('en-IN'); // Default to English (India) / Hinglish
 
-  // Auto-resize textarea
+  // Check if Web Speech API is supported
+  const isSpeechSupported =
+    typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  // Auto-resize textarea to fit content
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
     }
   }, [input]);
+
+  // Clean up recognition instance on unmount
+  useEffect(() => {
+    return () => {
+      isListeningRef.current = false;
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+      }
+    };
+  }, []);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -53,51 +84,154 @@ export function MessageComposer({
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Real voice recording using browser MediaRecorder
-  const handleToggleVoiceRecording = async () => {
-    if (isRecording) {
-      // Stop recording
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-      }
-      setIsRecording(false);
+  /**
+   * Stop voice speech recognition
+   */
+  const handleStopListening = () => {
+    isListeningRef.current = false;
+    setIsListening(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+    }
+    textareaRef.current?.focus();
+    onShowToast?.('Voice typing stopped.');
+  };
+
+  /**
+   * Switch recognition language (en-IN, hi-IN, en-US)
+   */
+  const handleSwitchVoiceLang = (newLang) => {
+    setVoiceLang(newLang);
+    const langLabels = {
+      'en-IN': 'English (India)',
+      'hi-IN': 'हिन्दी (Hindi)',
+      'en-US': 'English (US)'
+    };
+    onShowToast?.(`Language set to ${langLabels[newLang] || newLang}`);
+
+    // If currently listening, update and restart instance with the new language
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.lang = newLang;
+        recognitionRef.current.stop();
+        // onend will automatically restart with new lang if isListeningRef is true
+      } catch {}
+    }
+  };
+
+  /**
+   * Toggle Speech-to-Text Voice Typing
+   */
+  const handleToggleVoiceInput = () => {
+    if (isListening) {
+      handleStopListening();
       return;
     }
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      onShowToast?.('Voice recording is not supported in this browser environment.');
+    if (!isSpeechSupported) {
+      onShowToast?.(
+        'Speech recognition is supported in Google Chrome, Microsoft Edge, and Safari.',
+        'error'
+      );
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioChunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
 
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = voiceLang;
+      recognition.maxAlternatives = 1;
+
+      // Preserve existing text in composer
+      baseInputRef.current = input ? input.trim() : '';
+      accumulatedFinalRef.current = '';
+      isListeningRef.current = true;
+      setIsListening(true);
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        isListeningRef.current = true;
+        onShowToast?.('Listening... Speak now / Bolna shuru karein');
+      };
+
+      recognition.onresult = (event) => {
+        let currentFinal = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            currentFinal += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (currentFinal) {
+          accumulatedFinalRef.current +=
+            (accumulatedFinalRef.current ? ' ' : '') + currentFinal.trim();
+        }
+
+        const base = baseInputRef.current;
+        const spokenFinal = accumulatedFinalRef.current.trim();
+        const spokenInterim = interimTranscript.trim();
+
+        const combinedSpoken = [spokenFinal, spokenInterim]
+          .filter(Boolean)
+          .join(' ');
+        const fullResult = base
+          ? `${base} ${combinedSpoken}`
+          : combinedSpoken;
+
+        setInput(fullResult);
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('SpeechRecognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          isListeningRef.current = false;
+          setIsListening(false);
+          onShowToast?.(
+            'Microphone access denied. Please click the lock icon in the address bar and allow microphone.',
+            'error'
+          );
+        } else if (event.error === 'network') {
+          isListeningRef.current = false;
+          setIsListening(false);
+          onShowToast?.(
+            'Speech recognition network error. Please check your internet connection.',
+            'error'
+          );
         }
       };
 
-      recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], `voice-note-${Date.now()}.webm`, {
-          type: 'audio/webm'
-        });
-        setAttachedFiles((prev) => [...prev, audioFile]);
-        onShowToast?.('Voice recording attached.');
+      recognition.onend = () => {
+        // Auto-restart if user has not explicitly clicked Stop (handles browser pause/silence)
+        if (isListeningRef.current) {
+          try {
+            recognition.start();
+          } catch {
+            setIsListening(false);
+            isListeningRef.current = false;
+          }
+        } else {
+          setIsListening(false);
+        }
       };
 
-      recorder.start();
-      setIsRecording(true);
-      onShowToast?.('Recording audio... Click mic again to stop.');
+      recognitionRef.current = recognition;
+      recognition.start();
     } catch (err) {
-      console.error('Microphone access denied:', err);
-      onShowToast?.('Could not access microphone: ' + err.message);
-      setIsRecording(false);
+      console.error('Failed to start voice typing:', err);
+      setIsListening(false);
+      isListeningRef.current = false;
+      onShowToast?.(`Could not start microphone: ${err.message}`, 'error');
     }
   };
 
@@ -105,6 +239,11 @@ export function MessageComposer({
     if (isGenerating) {
       onStopGeneration?.();
       return;
+    }
+
+    // Stop voice listening on send
+    if (isListening) {
+      handleStopListening();
     }
 
     if (!input.trim() && attachedFiles.length === 0) return;
@@ -116,6 +255,8 @@ export function MessageComposer({
 
     setInput('');
     setAttachedFiles([]);
+    baseInputRef.current = '';
+    accumulatedFinalRef.current = '';
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.focus();
@@ -155,20 +296,66 @@ export function MessageComposer({
           </div>
         )}
 
-        {/* Recording active banner */}
-        {isRecording && (
-          <div style={{ padding: '6px 14px 0' }}>
-            <span className="composer-recording-pill">
-              <span className="model-status-dot" style={{ background: '#ef4444' }} />
-              Recording voice note...
+        {/* Real-time Voice Typing (Speech-to-Text) Active Bar */}
+        {isListening && (
+          <div className="composer-speech-active-bar">
+            <div className="speech-wave-animation">
+              <span className="wave-bar bar-1"></span>
+              <span className="wave-bar bar-2"></span>
+              <span className="wave-bar bar-3"></span>
+              <span className="wave-bar bar-4"></span>
+              <span className="wave-bar bar-5"></span>
+            </div>
+            <span className="speech-status-text">
+              Listening... Speak now (Bolna shuru karein)
             </span>
+            <div className="speech-lang-pill">
+              <button
+                type="button"
+                className={`speech-lang-btn ${voiceLang === 'en-IN' ? 'active' : ''}`}
+                onClick={() => handleSwitchVoiceLang('en-IN')}
+                title="English (India) / Hinglish"
+              >
+                EN (India)
+              </button>
+              <button
+                type="button"
+                className={`speech-lang-btn ${voiceLang === 'hi-IN' ? 'active' : ''}`}
+                onClick={() => handleSwitchVoiceLang('hi-IN')}
+                title="हिन्दी (Hindi)"
+              >
+                हिन्दी
+              </button>
+              <button
+                type="button"
+                className={`speech-lang-btn ${voiceLang === 'en-US' ? 'active' : ''}`}
+                onClick={() => handleSwitchVoiceLang('en-US')}
+                title="English (US)"
+              >
+                EN (US)
+              </button>
+            </div>
+            <button
+              type="button"
+              className="speech-done-btn"
+              onClick={handleStopListening}
+              title="Done speaking"
+            >
+              <FiCheck /> Done
+            </button>
           </div>
         )}
 
         <textarea
           ref={textareaRef}
           className="composer-textarea"
-          placeholder={isGenerating ? "Kiaan AI is responding..." : "Message Kiaan AI... (Shift + Enter for new line)"}
+          placeholder={
+            isGenerating
+              ? 'Kiaan AI is responding...'
+              : isListening
+              ? 'Listening... Speak now, your words will appear here...'
+              : 'Message Kiaan AI... (Shift + Enter for new line)'
+          }
           rows={1}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -190,24 +377,41 @@ export function MessageComposer({
             </button>
             <button
               type="button"
-              className={`composer-icon-btn ${isRecording ? 'active' : ''}`}
-              onClick={handleToggleVoiceRecording}
-              aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
-              title={isRecording ? "Stop recording" : "Voice input (Microphone)"}
+              className={`composer-icon-btn ${isListening ? 'speech-active' : ''}`}
+              onClick={handleToggleVoiceInput}
+              aria-label={
+                isListening
+                  ? 'Stop voice typing'
+                  : 'Start voice typing (Speak to type)'
+              }
+              title={
+                isListening
+                  ? 'Stop voice typing (Listening...)'
+                  : 'Voice typing (Bol ke type karein)'
+              }
             >
-              <FiMic style={isRecording ? { color: '#ef4444' } : {}} />
+              <FiMic />
+              {isListening && <span className="mic-pulse-ring" />}
             </button>
             <button
               type="button"
               className={`composer-icon-btn ${webSearchActive ? 'active' : ''}`}
               onClick={() => {
                 setWebSearchActive(!webSearchActive);
-                onShowToast?.(`Web search context mode ${!webSearchActive ? 'enabled' : 'disabled'}`);
+                onShowToast?.(
+                  `Web search context mode ${!webSearchActive ? 'enabled' : 'disabled'}`
+                );
               }}
               aria-label="Toggle web search context mode"
-              title={webSearchActive ? "Web search context enabled" : "Toggle web search"}
+              title={
+                webSearchActive
+                  ? 'Web search context enabled'
+                  : 'Toggle web search'
+              }
             >
-              <FiGlobe style={webSearchActive ? { color: 'var(--brand-primary)' } : {}} />
+              <FiGlobe
+                style={webSearchActive ? { color: 'var(--brand-primary)' } : {}}
+              />
             </button>
           </div>
 
@@ -232,7 +436,11 @@ export function MessageComposer({
                 onClick={handleSubmit}
                 disabled={!input.trim() && attachedFiles.length === 0}
                 aria-label="Send message"
-                title={input.trim() || attachedFiles.length > 0 ? "Send message (Enter)" : "Type a message to send"}
+                title={
+                  input.trim() || attachedFiles.length > 0
+                    ? 'Send message (Enter)'
+                    : 'Type a message to send'
+                }
               >
                 <FiSend />
               </button>

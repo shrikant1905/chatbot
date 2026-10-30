@@ -22,6 +22,8 @@
 .modal-dialog {
   width: 100%;
   max-width: 580px;
+  max-height: 90vh;
+  max-height: 90dvh;
   background: var(--bg-surface);
   border: 1px solid var(--border-base);
   border-radius: var(--radius-xl);

@@ -22,8 +22,8 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
 
   // Model Selection
   const [selectedModel, setSelectedModel] = useState({
-    id: 'qwen3:1.7b',
-    name: 'Qwen 3 (1.7B)'
+    id: 'qwen2.5:3b',
+    name: 'Qwen 2.5 (3B) [Fast]'
   });
 
   // Composer & Generation State
@@ -53,16 +53,15 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
   };
 
   // 1. Fetch conversations list from backend on mount
-  const refreshConversations = useCallback(async (selectId = null) => {
+  const refreshConversations = useCallback(async (stayOnChatId = null) => {
     try {
       const data = await apiClient.getConversations();
       const list = data.conversations || [];
       setConversations(list);
 
-      if (selectId) {
-        loadConversation(selectId);
-      } else if (!activeChatId && list.length > 0) {
-        loadConversation(list[0].id);
+      const targetId = stayOnChatId || activeChatId;
+      if (!targetId && list.length > 0) {
+        handleNewChat();
       } else if (list.length === 0) {
         handleNewChat();
       }
@@ -135,10 +134,15 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
     if (isGenerating) return;
 
     let targetConvId = activeChatId;
-    if (!targetConvId || targetConvId.startsWith('pending-')) {
+    const isNewChat = !targetConvId || targetConvId.startsWith('pending-');
+    if (isNewChat) {
       targetConvId = `conv-${Date.now()}`;
       setActiveChatId(targetConvId);
     }
+
+    const calculatedTitle = isNewChat
+      ? text.trim().slice(0, 36) + (text.trim().length > 36 ? '...' : '')
+      : activeConversation.title;
 
     // Upload files if any
     let attachmentIds = [];
@@ -179,6 +183,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
     setActiveConversation((prev) => ({
       ...prev,
       id: targetConvId,
+      title: calculatedTitle,
       messages: [...prev.messages, optimisticUserMsg, initialAssistantMsg]
     }));
 
@@ -211,6 +216,8 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
       // Update assistant message with completed record
       setActiveConversation((prev) => ({
         ...prev,
+        id: targetConvId,
+        title: calculatedTitle,
         messages: prev.messages.map((m) =>
           m.id === streamingAssistantId
             ? {
@@ -225,7 +232,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
       }));
 
       // Refresh sidebar list to reflect any new titles
-      await refreshConversations();
+      await refreshConversations(targetConvId);
     } catch (err) {
       console.error('Send message failed:', err);
 
@@ -374,6 +381,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
           activeTheme={activeTheme}
           onToggleTheme={onToggleTheme}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onNewChat={handleNewChat}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onClearChat={() => setIsClearChatConfirmOpen(true)}
           onShowToast={showToast}

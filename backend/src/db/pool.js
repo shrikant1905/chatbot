@@ -17,7 +17,7 @@ export function getPool() {
       enableKeepAlive: true,
       keepAliveInitialDelay: 0,
       timezone: '+00:00', // Consistent UTC handling
-      dateStrings: true
+      dateStrings: false
     });
   }
   return pool;

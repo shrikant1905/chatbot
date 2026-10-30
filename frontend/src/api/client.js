@@ -2,11 +2,28 @@
  * Centralized API Client for Kiaan AI
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined' && window.location.origin ? `${window.location.origin}/api` : 'http://localhost:5000/api');
+
+export function getOrCreateClientId() {
+  if (typeof window === 'undefined') return 'user_default';
+  try {
+    let clientId = localStorage.getItem('kiaan_client_id');
+    if (!clientId) {
+      clientId = 'usr_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+      localStorage.setItem('kiaan_client_id', clientId);
+    }
+    return clientId;
+  } catch {
+    return 'user_default';
+  }
+}
 
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
   const headers = {
+    'X-User-Id': getOrCreateClientId(),
     ...options.headers
   };
 
@@ -75,7 +92,10 @@ export const apiClient = {
     // SSE Streaming
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': getOrCreateClientId()
+      },
       body: JSON.stringify({ content, model, stream: true, attachmentIds }),
       signal
     });

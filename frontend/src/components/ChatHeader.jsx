@@ -7,7 +7,8 @@ import {
   FiDownload,
   FiSliders,
   FiInfo,
-  FiCheck
+  FiCheck,
+  FiPlus
 } from 'react-icons/fi';
 import { ThemeToggle } from './ThemeToggle';
 import { apiClient } from '../api/client';
@@ -17,6 +18,7 @@ export function ChatHeader({
   activeTheme,
   onToggleTheme,
   onOpenMobileSidebar,
+  onNewChat,
   onOpenSettings,
   onClearChat,
   onShowToast,
@@ -24,7 +26,8 @@ export function ChatHeader({
   onSelectModel
 }) {
   const [models, setModels] = useState([
-    { id: 'qwen3:1.7b', name: 'Qwen 3 (1.7B)', description: 'Fast local reasoning model on VPS', tag: 'Fast' },
+    { id: 'qwen2.5:3b', name: 'Qwen 2.5 (3B) [Ultra Fast]', description: 'Ultra-fast conversational model with instant replies', tag: 'Fast' },
+    { id: 'qwen3:1.7b', name: 'Qwen 3 (1.7B)', description: 'Fast local reasoning model on VPS', tag: 'Smart' },
     { id: 'qwen2.5vl:3b', name: 'Qwen 2.5-VL (3B)', description: 'Multimodal Vision-Language for Image Analysis & OCR', tag: 'Vision' },
     { id: 'kiaan-pro', name: 'Kiaan Pro 3.5', description: 'Optimized for high-speed conversational workflows', tag: 'Balanced' },
     { id: 'kiaan-code', name: 'Kiaan Code Alpha', description: 'Specialized checkpoint tuned for multi-file system design', tag: 'Code' }
@@ -193,6 +196,14 @@ export function ChatHeader({
 
       <div className="chat-header-right">
         {/* Theme Toggle Button */}
+        <button
+          className="header-icon-btn mobile-new-chat-btn"
+          onClick={onNewChat}
+          aria-label="New chat"
+          title="Start new conversation"
+        >
+          <FiPlus fontSize={18} />
+        </button>
         <ThemeToggle
           activeTheme={activeTheme}
           onToggle={onToggleTheme}

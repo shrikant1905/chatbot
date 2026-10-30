@@ -65,7 +65,7 @@ export class OllamaProvider extends AiProviderInterface {
       selectedModel = this.defaultModel;
     }
 
-    // Wrap execution inside the concurrency governor queue (Rate Limiter & Hot Cache)
+    // Wrap execution inside the concurrency governor queue (Rate Limiter without prompt caching)
     return concurrencyQueue.enqueue(
       async () => {
         return this._executeOllamaInference({
@@ -78,7 +78,7 @@ export class OllamaProvider extends AiProviderInterface {
           signal
         });
       },
-      { model: selectedModel, messages, signal }
+      { signal }
     );
   }
 
@@ -124,8 +124,10 @@ export class OllamaProvider extends AiProviderInterface {
     const formattedMessages = [];
 
     const systemPromptParts = [
-      'You are Kiaan AI, an intelligent, helpful, and fast enterprise assistant.',
-      'Answer directly, concisely, and immediately in clear points or sentences without conversational filler.'
+      'You are Kiaan AI, an ultra-fast, helpful, and intelligent assistant.',
+      'Always and directly answer ONLY the latest user message in the current conversation.',
+      'Never repeat, reference, or continue answering old, cancelled, or unrelated questions from previous messages.',
+      'If the user asks about live market prices, current financial status, or real-time events, provide a clear, concise answer or state your knowledge limitations directly without writing unrelated programming code.'
     ];
 
     if (userMemories && userMemories.length > 0) {
@@ -168,7 +170,6 @@ export class OllamaProvider extends AiProviderInterface {
           if (imagesBase64.length > 0) {
             formatted.images = imagesBase64;
             hasImages = true;
-            // Auto-switch to vision model if current selected model is text-only
             if (!selectedModel.includes('vl') && !selectedModel.includes('vision') && !selectedModel.includes('llava')) {
               selectedModel = process.env.OLLAMA_VISION_MODEL || 'qwen2.5vl:3b';
             }
@@ -215,15 +216,15 @@ export class OllamaProvider extends AiProviderInterface {
       messages: formattedMessages,
       stream: Boolean(stream),
       keep_alive: '24h',
+      think: false,
       options: {
         num_thread: 6,       // 6 threads to avoid CPU contention on 8 vCPUs
         num_ctx: 2048,       // Fast memory context
-        num_predict: 512,    // Stop endless rambling, fast 5-10s answers
+        num_predict: 384,    // Fast 3-5s snappy answers
         temperature: 0.6
       }
     };
 
-    // Include ONLY the 1-3 relevant tools if an operational action was explicitly requested
     if (targetedTools && targetedTools.length > 0) {
       payload.tools = targetedTools;
     }
@@ -264,8 +265,27 @@ export class OllamaProvider extends AiProviderInterface {
       let detectedToolCalls = [];
       let firstChunkLogged = false;
 
+      const abortHandler = () => {
+        try {
+          reader.cancel();
+        } catch {}
+      };
+
+      if (signal) {
+        if (signal.aborted) {
+          abortHandler();
+          throw new Error('Generation was cancelled by user.');
+        }
+        signal.addEventListener('abort', abortHandler, { once: true });
+      }
+
       try {
         while (true) {
+          if (signal?.aborted) {
+            abortHandler();
+            throw new Error('Generation was cancelled by user.');
+          }
+
           const { done, value } = await reader.read();
           if (done) break;
 
@@ -279,7 +299,6 @@ export class OllamaProvider extends AiProviderInterface {
             try {
               const parsed = JSON.parse(trimmed);
 
-              // Check for native Ollama tool_calls
               if (parsed.message?.tool_calls && parsed.message.tool_calls.length > 0) {
                 detectedToolCalls.push(...parsed.message.tool_calls);
               }
@@ -298,13 +317,16 @@ export class OllamaProvider extends AiProviderInterface {
           }
         }
       } catch (streamErr) {
-        if (streamErr.name === 'AbortError') {
+        if (streamErr.name === 'AbortError' || signal?.aborted) {
           throw new Error('Generation was cancelled by user.');
         }
         throw streamErr;
+      } finally {
+        if (signal) {
+          signal.removeEventListener('abort', abortHandler);
+        }
       }
 
-      // If tool calls were returned by Ollama, execute them
       if (detectedToolCalls.length > 0) {
         for (const tc of detectedToolCalls) {
           const toolName = tc.function?.name;
@@ -333,7 +355,6 @@ export class OllamaProvider extends AiProviderInterface {
       const data = await response.json();
       let content = data.message?.content || '';
 
-      // Check tool calls
       if (data.message?.tool_calls && data.message.tool_calls.length > 0) {
         for (const tc of data.message.tool_calls) {
           const toolName = tc.function?.name;
