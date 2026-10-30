@@ -8,8 +8,13 @@ import { SettingsModal } from '../components/SettingsModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import { apiClient } from '../api/client';
+import { usePreferences } from '../hooks/usePreferences';
+import { soundEffectsManager } from '../utils/soundEffects';
 
 export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }) {
+  // Global user display and sound preferences
+  const { preferences, updatePreferences } = usePreferences();
+
   // Real Conversations State
   const [conversations, setConversations] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
@@ -187,6 +192,11 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
       messages: [...prev.messages, optimisticUserMsg, initialAssistantMsg]
     }));
 
+    // Trigger subtle sound effect on send if enabled
+    if (preferences.soundEffects) {
+      soundEffectsManager.playSend();
+    }
+
     setIsGenerating(true);
     abortControllerRef.current = new AbortController();
 
@@ -251,6 +261,11 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
             : m
         )
       }));
+
+      // Trigger subtle receive sound effect if enabled
+      if (preferences.soundEffects) {
+        soundEffectsManager.playReceive();
+      }
 
       // Refresh sidebar list to reflect any new titles
       await refreshConversations(targetConvId);
@@ -375,6 +390,9 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
           ...prev,
           messages: [...prev.messages, res.assistantMessage]
         }));
+        if (preferences.soundEffects) {
+          soundEffectsManager.playReceive();
+        }
         showToast('Response regenerated.');
       }
     } catch (err) {
@@ -426,6 +444,8 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
                 <ChatMessage
                   key={message.id}
                   message={message}
+                  showTimestamps={preferences.showTimestamps}
+                  codeLineNumbers={preferences.codeLineNumbers}
                   onRetry={handleRetryPrompt}
                   onRegenerate={handleRegenerate}
                   onShowToast={showToast}
@@ -453,6 +473,8 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
         onClose={() => setIsSettingsOpen(false)}
         themeMode={themeMode}
         setThemeMode={setThemeMode}
+        preferences={preferences}
+        updatePreferences={updatePreferences}
         onShowToast={showToast}
       />
 

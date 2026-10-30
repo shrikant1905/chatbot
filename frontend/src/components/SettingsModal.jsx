@@ -1,24 +1,60 @@
 import React, { useEffect, useState } from 'react';
-import { FiX, FiSliders, FiSun, FiMoon, FiMonitor, FiCheck, FiTrash2, FiPlus, FiDatabase } from 'react-icons/fi';
+import {
+  FiX,
+  FiSliders,
+  FiSun,
+  FiMoon,
+  FiMonitor,
+  FiCheck,
+  FiTrash2,
+  FiPlus,
+  FiDatabase,
+  FiLoader
+} from 'react-icons/fi';
 import { apiClient } from '../api/client';
+import { soundEffectsManager } from '../utils/soundEffects';
 
 export function SettingsModal({
   isOpen,
   onClose,
   themeMode,
   setThemeMode,
+  preferences,
+  updatePreferences,
   onShowToast
 }) {
-  const [showTimestamps, setShowTimestamps] = useState(true);
-  const [codeLineNumbers, setCodeLineNumbers] = useState(false);
-  const [soundEffects, setSoundEffects] = useState(false);
+  // Local settings edit state
+  const [localThemeMode, setLocalThemeMode] = useState(themeMode || 'dark');
+  const [showTimestamps, setShowTimestamps] = useState(preferences?.showTimestamps ?? true);
+  const [codeLineNumbers, setCodeLineNumbers] = useState(preferences?.codeLineNumbers ?? false);
+  const [soundEffects, setSoundEffects] = useState(preferences?.soundEffects ?? false);
 
   // Conversational Memory State
   const [memories, setMemories] = useState([]);
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
   const [loadingMemories, setLoadingMemories] = useState(false);
+  const [isSavingMemory, setIsSavingMemory] = useState(false);
 
+  // Sync state whenever modal opens or props change
+  useEffect(() => {
+    if (isOpen) {
+      setLocalThemeMode(themeMode || 'dark');
+      setShowTimestamps(preferences?.showTimestamps ?? true);
+      setCodeLineNumbers(preferences?.codeLineNumbers ?? false);
+      setSoundEffects(preferences?.soundEffects ?? false);
+
+      setLoadingMemories(true);
+      apiClient.getMemories()
+        .then((res) => setMemories(res.memories || []))
+        .catch((err) => {
+          console.warn('Could not load conversational memories:', err.message);
+        })
+        .finally(() => setLoadingMemories(false));
+    }
+  }, [isOpen, themeMode, preferences]);
+
+  // Handle ESC key to close
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -29,32 +65,34 @@ export function SettingsModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Load memories on open
-  useEffect(() => {
-    if (isOpen) {
-      setLoadingMemories(true);
-      apiClient.getMemories()
-        .then((res) => setMemories(res.memories || []))
-        .catch(() => {})
-        .finally(() => setLoadingMemories(false));
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
+
+  const handleToggleSound = (checked) => {
+    setSoundEffects(checked);
+    if (checked) {
+      soundEffectsManager.playToggle();
+    }
+  };
 
   const handleAddMemory = async () => {
     if (!newKey.trim() || !newValue.trim()) {
-      onShowToast?.('Both memory key and value are required.');
+      onShowToast?.('Both memory key and value are required.', 'error');
       return;
     }
+    setIsSavingMemory(true);
     try {
       const res = await apiClient.saveMemory(newKey.trim(), newValue.trim());
-      setMemories((prev) => [...prev.filter((m) => m.key_name !== res.memory.key_name), res.memory]);
+      setMemories((prev) => [
+        ...prev.filter((m) => m.key_name !== res.memory.key_name),
+        res.memory
+      ]);
       setNewKey('');
       setNewValue('');
       onShowToast?.('Memory saved to conversational context.');
     } catch (err) {
-      onShowToast?.(err.message);
+      onShowToast?.(err.message, 'error');
+    } finally {
+      setIsSavingMemory(false);
     }
   };
 
@@ -64,15 +102,29 @@ export function SettingsModal({
       setMemories((prev) => prev.filter((m) => m.id !== id));
       onShowToast?.('Memory removed.');
     } catch (err) {
-      onShowToast?.(err.message);
+      onShowToast?.(err.message, 'error');
     }
   };
 
   const handleSave = () => {
-    onClose();
-    if (onShowToast) {
-      onShowToast('Preferences saved successfully.');
+    // 1. Update theme
+    if (localThemeMode !== themeMode) {
+      setThemeMode(localThemeMode);
     }
+
+    // 2. Persist preferences
+    updatePreferences?.({
+      showTimestamps,
+      codeLineNumbers,
+      soundEffects
+    });
+
+    if (soundEffects) {
+      soundEffectsManager.playToggle();
+    }
+
+    onShowToast?.('Preferences saved successfully.');
+    onClose();
   };
 
   return (
@@ -113,24 +165,24 @@ export function SettingsModal({
               <div className="segmented-control">
                 <button
                   type="button"
-                  className={`segment-btn ${themeMode === 'light' ? 'active' : ''}`}
-                  onClick={() => setThemeMode('light')}
+                  className={`segment-btn ${localThemeMode === 'light' ? 'active' : ''}`}
+                  onClick={() => setLocalThemeMode('light')}
                 >
                   <FiSun />
                   <span>Light</span>
                 </button>
                 <button
                   type="button"
-                  className={`segment-btn ${themeMode === 'dark' ? 'active' : ''}`}
-                  onClick={() => setThemeMode('dark')}
+                  className={`segment-btn ${localThemeMode === 'dark' ? 'active' : ''}`}
+                  onClick={() => setLocalThemeMode('dark')}
                 >
                   <FiMoon />
                   <span>Dark</span>
                 </button>
                 <button
                   type="button"
-                  className={`segment-btn ${themeMode === 'system' ? 'active' : ''}`}
-                  onClick={() => setThemeMode('system')}
+                  className={`segment-btn ${localThemeMode === 'system' ? 'active' : ''}`}
+                  onClick={() => setLocalThemeMode('system')}
                 >
                   <FiMonitor />
                   <span>System</span>
@@ -181,14 +233,14 @@ export function SettingsModal({
               <div className="settings-label-box">
                 <span className="settings-label">Sound Effects</span>
                 <span className="settings-description">
-                  Play subtle auditory chime upon local interaction
+                  Play subtle auditory chime upon message sent and received
                 </span>
               </div>
               <label className="toggle-switch">
                 <input
                   type="checkbox"
                   checked={soundEffects}
-                  onChange={(e) => setSoundEffects(e.target.checked)}
+                  onChange={(e) => handleToggleSound(e.target.checked)}
                 />
                 <span className="toggle-slider"></span>
               </label>
@@ -202,7 +254,7 @@ export function SettingsModal({
               Conversational Memory
             </div>
 
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.45 }}>
               Saved preferences that Kiaan AI remembers across conversations. Sensitive credentials (passwords, tokens, API keys) are strictly rejected.
             </div>
 
@@ -212,12 +264,15 @@ export function SettingsModal({
                 placeholder="Key (e.g. style)"
                 value={newKey}
                 onChange={(e) => setNewKey(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddMemory();
+                }}
                 style={{
                   flex: 1,
-                  padding: '6px 10px',
+                  padding: '7px 10px',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-surface)',
+                  background: 'var(--bg-surface-elevated)',
                   color: 'var(--text-primary)',
                   fontSize: '0.82rem'
                 }}
@@ -227,12 +282,15 @@ export function SettingsModal({
                 placeholder="Value (e.g. concise, modern JS)"
                 value={newValue}
                 onChange={(e) => setNewValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddMemory();
+                }}
                 style={{
                   flex: 2,
-                  padding: '6px 10px',
+                  padding: '7px 10px',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-surface)',
+                  background: 'var(--bg-surface-elevated)',
                   color: 'var(--text-primary)',
                   fontSize: '0.82rem'
                 }}
@@ -240,15 +298,16 @@ export function SettingsModal({
               <button
                 type="button"
                 className="btn btn-primary"
-                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                style={{ padding: '7px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                 onClick={handleAddMemory}
+                disabled={isSavingMemory}
               >
-                <FiPlus />
+                {isSavingMemory ? <FiLoader className="spinning-icon" /> : <FiPlus />}
                 <span>Add</span>
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '150px', overflowY: 'auto' }}>
               {memories.map((m) => (
                 <div
                   key={m.id}
@@ -256,20 +315,29 @@ export function SettingsModal({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '6px 10px',
+                    padding: '8px 12px',
                     borderRadius: 'var(--radius-sm)',
                     background: 'var(--bg-surface-elevated)',
                     border: '1px solid var(--border-subtle)',
-                    fontSize: '0.8rem'
+                    fontSize: '0.82rem'
                   }}
                 >
-                  <div>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '10px' }}>
                     <strong style={{ color: 'var(--text-primary)' }}>{m.key_name}:</strong>{' '}
                     <span style={{ color: 'var(--text-secondary)' }}>{m.value_text}</span>
                   </div>
                   <button
                     type="button"
-                    style={{ background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                    style={{
+                      background: 'transparent',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      border: 'none',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      borderRadius: 'var(--radius-xs)'
+                    }}
                     onClick={() => handleDeleteMemory(m.id)}
                     title="Delete memory"
                   >
@@ -278,7 +346,14 @@ export function SettingsModal({
                 </div>
               ))}
               {memories.length === 0 && !loadingMemories && (
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No persistent memories saved yet.</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  No persistent memories saved yet.
+                </span>
+              )}
+              {loadingMemories && (
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Loading memories...
+                </span>
               )}
             </div>
           </div>
@@ -306,11 +381,11 @@ export function SettingsModal({
                   fontSize: '0.72rem',
                   fontWeight: 600
                 }}>
-                  v1.0.0 Integrated
+                  v2.0 Universal
                 </span>
               </div>
               <div>
-                Full-stack intelligent developer workspace with Express API, MySQL persistence, real file attachments, and Ollama AI provider abstraction.
+                Full-stack intelligent developer workspace with high-speed streaming inference, MySQL memory persistence, file attachments, and multi-model Ollama support.
               </div>
             </div>
           </div>

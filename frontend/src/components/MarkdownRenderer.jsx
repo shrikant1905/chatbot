@@ -4,8 +4,9 @@ import { ActionCard } from './ActionCard';
 
 /**
  * Lightweight Zero-Dependency Syntax Highlighting for Code Blocks
+ * Supports optional code line numbers
  */
-function renderHighlightedCode(code, language) {
+function renderHighlightedCode(code, language, showLineNumbers = false) {
   if (!code) return '';
   const lines = code.split('\n');
 
@@ -19,7 +20,12 @@ function renderHighlightedCode(code, language) {
     if (trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('--')) {
       return (
         <div key={lineIdx} className="code-line">
-          <span className="syn-comment">{line}</span>
+          {showLineNumbers && (
+            <span className="code-line-number" aria-hidden="true">
+              {lineIdx + 1}
+            </span>
+          )}
+          <span className="code-line-text syn-comment">{line}</span>
         </div>
       );
     }
@@ -55,7 +61,12 @@ function renderHighlightedCode(code, language) {
 
     return (
       <div key={lineIdx} className="code-line">
-        {tokens.length > 0 ? tokens : ' '}
+        {showLineNumbers && (
+          <span className="code-line-number" aria-hidden="true">
+            {lineIdx + 1}
+          </span>
+        )}
+        <span className="code-line-text">{tokens.length > 0 ? tokens : ' '}</span>
       </div>
     );
   });
@@ -64,7 +75,7 @@ function renderHighlightedCode(code, language) {
 /**
  * ChatGPT-Grade Code Block Component
  */
-export function CodeBlock({ language, code, isStreaming = false }) {
+export function CodeBlock({ language, code, isStreaming = false, showLineNumbers = false }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -110,7 +121,7 @@ export function CodeBlock({ language, code, isStreaming = false }) {
         </button>
       </div>
       <pre className="code-block-content">
-        <code>{renderHighlightedCode(code, displayLang)}</code>
+        <code>{renderHighlightedCode(code, displayLang, showLineNumbers)}</code>
       </pre>
       {isStreaming && <span className="typing-cursor" style={{ margin: '0 0 10px 14px' }} />}
     </div>
@@ -209,7 +220,7 @@ export function parseInline(text) {
 /**
  * Main MarkdownRenderer Component - ChatGPT Grade
  */
-export function MarkdownRenderer({ content }) {
+export function MarkdownRenderer({ content, showLineNumbers = false }) {
   if (!content) return null;
 
   // Extract <think>...</think> reasoning blocks (e.g. Qwen / DeepSeek)
@@ -222,7 +233,6 @@ export function MarkdownRenderer({ content }) {
   }
 
   // Block parsing: Split by completed code blocks, unclosed streaming code blocks, or Action Cards
-  // Notice (?:```|$) allows unclosed code blocks during streaming to render smoothly!
   const blockRegex = /(?:```([a-zA-Z0-9_+#.-]*)\r?\n([\s\S]*?)(?:```|$)|:::action_card\r?\n([\s\S]*?):::)/g;
   const blocks = [];
   let lastIndex = 0;
@@ -282,6 +292,7 @@ export function MarkdownRenderer({ content }) {
               language={block.language}
               code={block.code}
               isStreaming={block.isStreaming}
+              showLineNumbers={showLineNumbers}
             />
           );
         }

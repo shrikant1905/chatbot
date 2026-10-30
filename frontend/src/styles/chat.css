@@ -1249,3 +1249,40 @@
   white-space: pre-wrap;
   border-top: 1px solid var(--border-subtle);
 }
+
+
+/* Code Block Line Numbers & Spinner Enhancements */
+.code-line {
+  display: flex !important;
+  min-height: 1.55em;
+  line-height: 1.65;
+}
+
+.code-line-number {
+  display: inline-block;
+  min-width: 2.4rem;
+  padding-right: 0.8rem;
+  margin-right: 0.75rem;
+  text-align: right;
+  color: var(--text-muted);
+  opacity: 0.45;
+  user-select: none;
+  border-right: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  font-size: 0.82rem;
+}
+
+.code-line-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.spinning-icon {
+  animation: spinSlow 1s linear infinite;
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -33,7 +33,14 @@ export function formatMessageTime(timestamp) {
   }
 }
 
-export function ChatMessage({ message, onRetry, onRegenerate, onShowToast }) {
+export function ChatMessage({
+  message,
+  onRetry,
+  onRegenerate,
+  onShowToast,
+  showTimestamps = true,
+  codeLineNumbers = false
+}) {
   const isAssistant = message.role === 'assistant';
   const isSystemNotice = message.role === 'system';
   const isFailed = message.status === 'failed';
@@ -145,7 +152,7 @@ export function ChatMessage({ message, onRetry, onRegenerate, onShowToast }) {
             {isAssistant ? 'Kiaan AI' : 'You'}
           </span>
           {isAssistant && <span className="message-badge">{message.model || 'AI Assistant'}</span>}
-          {message.created_at && (
+          {showTimestamps && message.created_at && (
             <span>
               {formatMessageTime(message.created_at)}
             </span>
@@ -163,7 +170,7 @@ export function ChatMessage({ message, onRetry, onRegenerate, onShowToast }) {
             </div>
           ) : isAssistant ? (
             <>
-              <MarkdownRenderer content={message.content} />
+              <MarkdownRenderer content={message.content} showLineNumbers={codeLineNumbers} />
               {message.isStreaming && <span className="typing-cursor" />}
             </>
           ) : (
