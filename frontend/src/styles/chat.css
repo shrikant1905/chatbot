@@ -1111,3 +1111,141 @@
   border-color: rgba(99, 102, 241, 0.4);
   background: rgba(99, 102, 241, 0.12);
 }
+
+
+/* ==========================================================================
+   ChatGPT-Grade Markdown & Syntax Highlighting Overrides
+   ========================================================================== */
+
+.message-bubble code.inline-code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 2px 6.5px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  display: inline-block;
+  margin: 1px 2px;
+  vertical-align: baseline;
+}
+
+[data-theme="light"] .message-bubble code.inline-code {
+  background: #f1f5f9;
+  color: #4338ca;
+  border: 1px solid #e2e8f0;
+}
+
+/* Syntax Highlighting Tokens (ChatGPT Dark Theme Styling) */
+.code-line {
+  min-height: 1.55em;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.syn-keyword {
+  color: #818cf8; /* Vibrant Indigo/Purple */
+  font-weight: 600;
+}
+
+.syn-string {
+  color: #34d399; /* Crisp Emerald Green */
+}
+
+.syn-comment {
+  color: #64748b; /* Sleek Muted Slate */
+  font-style: italic;
+}
+
+.syn-constant {
+  color: #fbbf24; /* Warm Gold / Amber */
+}
+
+/* Enhanced Markdown Tables */
+.table-responsive-container {
+  width: 100%;
+  overflow-x: auto;
+  margin: 16px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.message-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.message-table th, .message-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.message-table th:last-child, .message-table td:last-child {
+  border-right: none;
+}
+
+.message-table th {
+  background: var(--bg-surface-elevated);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.message-table tr:last-child td {
+  border-bottom: none;
+}
+
+.message-table tbody tr:hover {
+  background: var(--bg-surface-hover);
+}
+
+/* Markdown Link */
+.chat-markdown-link {
+  color: var(--brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: opacity var(--transition-fast);
+}
+
+.chat-markdown-link:hover {
+  opacity: 0.8;
+}
+
+/* Markdown Horizontal Rule */
+.chat-markdown-hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 20px 0;
+}
+
+/* Think Box / Reasoning Collapse */
+.think-box {
+  margin: 12px 0 16px 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(99, 102, 241, 0.05);
+  overflow: hidden;
+}
+
+.think-summary {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  color: var(--brand-primary);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.think-content {
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  border-top: 1px solid var(--border-subtle);
+}

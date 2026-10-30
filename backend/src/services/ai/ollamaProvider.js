@@ -7,7 +7,7 @@ export class OllamaProvider extends AiProviderInterface {
   constructor(config) {
     super('ollama');
     this.baseUrl = (config.ollamaBaseUrl || 'http://127.0.0.1:11434').replace(/\/+$/, '');
-    this.defaultModel = config.ollamaDefaultModel || 'qwen3:1.7b';
+    this.defaultModel = config.ollamaDefaultModel || 'gemma3:4b';
   }
 
   async checkAvailability() {
@@ -30,11 +30,52 @@ export class OllamaProvider extends AiProviderInterface {
       }
 
       const data = await res.json();
-      const models = (data.models || []).map((m) => ({
-        id: m.name,
-        name: m.name,
-        tag: `${Math.round((m.size || 0) / 1024 / 1024 / 1024 * 10) / 10}GB`
-      }));
+
+      const modelMeta = {
+        'gemma3:4b': {
+          displayName: 'Gemma 3 (4B) 🌟 [Default - High Performance]',
+          description: 'Google Gemma 3 - Deep reasoning, rich formatting & high quality',
+          priority: 1
+        },
+        'qwen2.5:3b': {
+          displayName: 'Qwen 2.5 (3B) ⚡ [Fast]',
+          description: 'Instant replies, direct full-depth answers without delays',
+          priority: 2
+        },
+        'qwen2.5:1.5b': {
+          displayName: 'Qwen 2.5 (1.5B) 🚀 [Ultra Fast]',
+          description: 'Blazing fast 1-second response time on CPU',
+          priority: 3
+        },
+        'qwen3:1.7b': {
+          displayName: 'Qwen 3 (1.7B) 💡 [Fast Reasoning]',
+          description: 'Lightweight reasoning & logic model',
+          priority: 4
+        },
+        'qwen3:4b': {
+          displayName: 'Qwen 3 (4B) 🧠 [Deep Reasoning]',
+          description: 'Heavy 4B model (complex logic)',
+          priority: 5
+        },
+        'qwen2.5vl:3b': {
+          displayName: 'Qwen 2.5-VL (3B) 👁️ [Vision & OCR]',
+          description: 'Multimodal image analysis and document reading',
+          priority: 6
+        }
+      };
+
+      const models = (data.models || [])
+        .map((m) => {
+          const meta = modelMeta[m.name] || {};
+          return {
+            id: m.name,
+            name: meta.displayName || m.name,
+            description: meta.description || `${Math.round(((m.size || 0) / 1024 / 1024 / 1024) * 10) / 10} GB Local Model`,
+            tag: `${Math.round(((m.size || 0) / 1024 / 1024 / 1024) * 10) / 10}GB`,
+            priority: meta.priority ?? 99
+          };
+        })
+        .sort((a, b) => a.priority - b.priority);
 
       return {
         available: true,
@@ -124,10 +165,16 @@ export class OllamaProvider extends AiProviderInterface {
     const formattedMessages = [];
 
     const systemPromptParts = [
-      'You are Kiaan AI, an ultra-fast, helpful, and intelligent assistant.',
-      'Always and directly answer ONLY the latest user message in the current conversation.',
-      'Never repeat, reference, or continue answering old, cancelled, or unrelated questions from previous messages.',
-      'If the user asks about live market prices, current financial status, or real-time events, provide a clear, concise answer or state your knowledge limitations directly without writing unrelated programming code.'
+      'You are Kiaan AI, an ultra-fast, helpful, highly capable, and intelligent assistant designed like ChatGPT.',
+      'Always provide complete, in-depth, rich, and full-length responses. Never cut answers short, never summarize prematurely, and never omit important details.',
+      'Format your responses cleanly and beautifully using standard GitHub-flavored Markdown:',
+      '- Use descriptive headings (## and ###) to structure the response clearly.',
+      '- When writing code, provide complete, working, production-ready code with explanations in fenced code blocks with language identifiers (e.g. ```javascript, ```python, ```tsx, ```bash, etc.). Never truncate code blocks or leave unfinished placeholders.',
+      '- When writing emails, letters, or templates, provide the complete, ready-to-use version with subject line, professional greeting, full in-depth body paragraphs, bullet points for key details, and a polished sign-off.',
+      '- Use bullet points (* or -) and numbered lists (1. 2. 3.) for clarity and high readability.',
+      '- Use Markdown tables (| col1 | col2 |) whenever comparing items or presenting structured data.',
+      '- Explain concepts thoroughly with real-world examples, best practices, and actionable insights.',
+      'Directly answer the user\'s latest message thoroughly and completely.'
     ];
 
     if (userMemories && userMemories.length > 0) {
@@ -151,7 +198,7 @@ export class OllamaProvider extends AiProviderInterface {
         role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
         content: msg.role === 'assistant' && !isLastMessage && msg.content
           ? msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
-          : msg.content
+          : (msg.content || '')
       };
 
       if (isLastMessage && attachments && attachments.length > 0) {
@@ -216,12 +263,12 @@ export class OllamaProvider extends AiProviderInterface {
       messages: formattedMessages,
       stream: Boolean(stream),
       keep_alive: '24h',
-      think: false,
       options: {
-        num_thread: 6,       // 6 threads to avoid CPU contention on 8 vCPUs
-        num_ctx: 2048,       // Fast memory context
-        num_predict: 384,    // Fast 3-5s snappy answers
-        temperature: 0.6
+        num_ctx: parseInt(process.env.OLLAMA_NUM_CTX, 10) || 4096,
+        num_predict: parseInt(process.env.OLLAMA_NUM_PREDICT, 10) || 4096, // Full length responses!
+        temperature: 0.7,
+        top_k: 40,
+        top_p: 0.9
       }
     };
 
@@ -264,6 +311,8 @@ export class OllamaProvider extends AiProviderInterface {
       let buffer = '';
       let detectedToolCalls = [];
       let firstChunkLogged = false;
+      let thinkBuffer = '';
+      let thinkEmitted = false;
 
       const abortHandler = () => {
         try {
@@ -303,7 +352,19 @@ export class OllamaProvider extends AiProviderInterface {
                 detectedToolCalls.push(...parsed.message.tool_calls);
               }
 
+              // Capture thinking trace if model separates it
+              if (parsed.message?.thinking) {
+                thinkBuffer += parsed.message.thinking;
+              }
+
               if (parsed.message?.content) {
+                if (thinkBuffer && !thinkEmitted) {
+                  const thinkBlock = `<think>\n${thinkBuffer.trim()}\n</think>\n\n`;
+                  thinkEmitted = true;
+                  fullContent += thinkBlock;
+                  onChunk(thinkBlock);
+                }
+
                 if (!firstChunkLogged) {
                   firstChunkLogged = true;
                   console.log(`[LATENCY TRACE] Step 3: First text token generated by model in ${Math.round(performance.now() - fetchStart)}ms`);
@@ -354,6 +415,10 @@ export class OllamaProvider extends AiProviderInterface {
     } else {
       const data = await response.json();
       let content = data.message?.content || '';
+
+      if (data.message?.thinking) {
+        content = `<think>\n${data.message.thinking.trim()}\n</think>\n\n${content}`;
+      }
 
       if (data.message?.tool_calls && data.message.tool_calls.length > 0) {
         for (const tc of data.message.tool_calls) {

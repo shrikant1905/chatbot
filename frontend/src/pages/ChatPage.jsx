@@ -20,10 +20,10 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
   });
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
 
-  // Model Selection
+  // Model Selection - Default to Gemma 3 (4B)
   const [selectedModel, setSelectedModel] = useState({
-    id: 'qwen2.5:3b',
-    name: 'Qwen 2.5 (3B) [Fast]'
+    id: 'gemma3:4b',
+    name: 'Gemma 3 (4B) 🌟 [Default]'
   });
 
   // Composer & Generation State
@@ -129,7 +129,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
     showToast('Started new conversation.');
   };
 
-  // Handle Sending a Message (with real backend, attachments & SSE streaming)
+  // Handle Sending a Message (with High-Speed Smooth Typewriter Queue)
   const handleSendMessage = async (text, files = []) => {
     if (isGenerating) return;
 
@@ -190,8 +190,29 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
     setIsGenerating(true);
     abortControllerRef.current = new AbortController();
 
+    let targetBuffer = '';
+    let displayedText = '';
+    let streamTimer = null;
+
     try {
-      let accumulated = '';
+      // High-speed smooth typewriter ticker (70 FPS, ~14ms per tick)
+      streamTimer = setInterval(() => {
+        if (displayedText.length < targetBuffer.length) {
+          const backlog = targetBuffer.length - displayedText.length;
+          // Ultra-responsive adaptive step: smoothly catches up with network packets
+          const step = backlog > 120 ? 18 : backlog > 60 ? 10 : backlog > 20 ? 5 : backlog > 5 ? 2 : 1;
+          displayedText = targetBuffer.slice(0, displayedText.length + step);
+
+          setActiveConversation((prev) => ({
+            ...prev,
+            messages: prev.messages.map((m) =>
+              m.id === streamingAssistantId
+                ? { ...m, content: displayedText, isStreaming: true }
+                : m
+            )
+          }));
+        }
+      }, 14);
 
       const result = await apiClient.sendMessage({
         conversationId: targetConvId,
@@ -201,19 +222,19 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
         attachmentIds,
         signal: abortControllerRef.current.signal,
         onChunk: (delta) => {
-          accumulated += delta;
-          setActiveConversation((prev) => ({
-            ...prev,
-            messages: prev.messages.map((m) =>
-              m.id === streamingAssistantId
-                ? { ...m, content: accumulated, isStreaming: true }
-                : m
-            )
-          }));
+          targetBuffer += delta;
         }
       });
 
-      // Update assistant message with completed record
+      // Clear typing ticker
+      if (streamTimer) {
+        clearInterval(streamTimer);
+        streamTimer = null;
+      }
+
+      // Ensure 100% complete final response is flushed immediately
+      const finalCompleteContent = result.assistantMessage?.content || targetBuffer || displayedText;
+
       setActiveConversation((prev) => ({
         ...prev,
         id: targetConvId,
@@ -223,7 +244,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
             ? {
                 ...m,
                 id: result.assistantMessage?.id || streamingAssistantId,
-                content: result.assistantMessage?.content || accumulated,
+                content: finalCompleteContent,
                 isStreaming: false,
                 status: 'completed'
               }
@@ -234,11 +255,15 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
       // Refresh sidebar list to reflect any new titles
       await refreshConversations(targetConvId);
     } catch (err) {
+      if (streamTimer) {
+        clearInterval(streamTimer);
+        streamTimer = null;
+      }
       console.error('Send message failed:', err);
 
       const isAborted = abortControllerRef.current?.signal.aborted;
       const failureMessage = isAborted
-        ? 'Generation was stopped by user.'
+        ? (displayedText || targetBuffer || 'Generation was stopped by user.')
         : err.message || 'Generation failed. Verify AI provider is running.';
 
       setActiveConversation((prev) => ({
@@ -254,9 +279,11 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
             : m
         )
       }));
-
-      showToast(failureMessage, 'error');
     } finally {
+      if (streamTimer) {
+        clearInterval(streamTimer);
+        streamTimer = null;
+      }
       setIsGenerating(false);
       abortControllerRef.current = null;
     }

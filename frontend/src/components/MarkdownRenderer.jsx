@@ -1,9 +1,70 @@
-
 import React, { useState } from 'react';
 import { FiCopy, FiCheck } from 'react-icons/fi';
 import { ActionCard } from './ActionCard';
 
-export function CodeBlock({ language, code }) {
+/**
+ * Lightweight Zero-Dependency Syntax Highlighting for Code Blocks
+ */
+function renderHighlightedCode(code, language) {
+  if (!code) return '';
+  const lines = code.split('\n');
+
+  // Common keywords across JS, Python, SQL, HTML, CSS, Bash, C++, Go, Rust
+  const tokenRegex = /(\/\/.*$|#.*$|--.*$|'[^']*'|"[^"]*"|`[^`]*`|\b(?:const|let|var|function|return|if|else|for|while|switch|case|break|default|import|export|from|class|extends|new|this|async|await|try|catch|finally|throw|typeof|instanceof|def|elif|in|is|not|lambda|pass|with|as|yield|select|from|where|insert|update|delete|create|table|public|private|protected|static|void|int|float|double|string|bool|boolean)\b|\b(?:true|false|null|undefined|None|True|False|NaN)\b|\b\d+(?:\.\d+)?\b)/g;
+
+  return lines.map((line, lineIdx) => {
+    const trimmed = line.trim();
+
+    // Whole-line comments
+    if (trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('--')) {
+      return (
+        <div key={lineIdx} className="code-line">
+          <span className="syn-comment">{line}</span>
+        </div>
+      );
+    }
+
+    const tokens = [];
+    let lastIdx = 0;
+    let match;
+
+    while ((match = tokenRegex.exec(line)) !== null) {
+      if (match.index > lastIdx) {
+        tokens.push(line.substring(lastIdx, match.index));
+      }
+
+      const val = match[0];
+      const key = `${lineIdx}-${match.index}`;
+
+      if (val.startsWith('//') || val.startsWith('#') || val.startsWith('--')) {
+        tokens.push(<span key={key} className="syn-comment">{val}</span>);
+      } else if (val.startsWith('"') || val.startsWith("'") || val.startsWith('`')) {
+        tokens.push(<span key={key} className="syn-string">{val}</span>);
+      } else if (/^(?:true|false|null|undefined|None|True|False|NaN|\d+(?:\.\d+)?)$/.test(val)) {
+        tokens.push(<span key={key} className="syn-constant">{val}</span>);
+      } else {
+        tokens.push(<span key={key} className="syn-keyword">{val}</span>);
+      }
+
+      lastIdx = tokenRegex.lastIndex;
+    }
+
+    if (lastIdx < line.length) {
+      tokens.push(line.substring(lastIdx));
+    }
+
+    return (
+      <div key={lineIdx} className="code-line">
+        {tokens.length > 0 ? tokens : ' '}
+      </div>
+    );
+  });
+}
+
+/**
+ * ChatGPT-Grade Code Block Component
+ */
+export function CodeBlock({ language, code, isStreaming = false }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -12,7 +73,6 @@ export function CodeBlock({ language, code }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback copy
       const textArea = document.createElement('textarea');
       textArea.value = code;
       document.body.appendChild(textArea);
@@ -24,10 +84,12 @@ export function CodeBlock({ language, code }) {
     }
   };
 
+  const displayLang = (language || 'code').toLowerCase().trim();
+
   return (
     <div className="code-block-wrapper">
       <div className="code-block-header">
-        <span className="code-language">{language || 'code'}</span>
+        <span className="code-language">{displayLang}</span>
         <button
           className="copy-code-btn"
           onClick={handleCopy}
@@ -37,104 +99,120 @@ export function CodeBlock({ language, code }) {
           {copied ? (
             <>
               <FiCheck style={{ color: '#10b981' }} />
-              <span style={{ color: '#10b981' }}>Copied!</span>
+              <span style={{ color: '#10b981', fontWeight: 600 }}>Copied!</span>
             </>
           ) : (
             <>
               <FiCopy />
-              <span>Copy</span>
+              <span>Copy code</span>
             </>
           )}
         </button>
       </div>
       <pre className="code-block-content">
-        <code>{code}</code>
+        <code>{renderHighlightedCode(code, displayLang)}</code>
       </pre>
+      {isStreaming && <span className="typing-cursor" style={{ margin: '0 0 10px 14px' }} />}
     </div>
   );
 }
 
-// Parses inline elements: bold, italic, inline code, links
-function parseInline(text) {
-  if (!text) return null;
+/**
+ * Recursive Inline Token Parser
+ * Solves nested formatting bugs: **bold text with `inline code`** renders perfectly!
+ */
+export function parseInline(text) {
+  if (!text || typeof text !== 'string') return text;
 
-  // Split by inline code first: `code`
-  const codeParts = text.split(/(`[^`]+`)/g);
+  // Order of tokens: inline code, bold-italic, bold, strikethrough, links, italic
+  const regex = /(`[^`]+`|\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|\[[^\]]+\]\([^)]+\)|\*[^*]+\*|(?<=\s|^)_[^_]+_(?=\s|$))/g;
 
-  return codeParts.map((part, index) => {
-    if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
-      return (
-        <code key={index} className="inline-code">
-          {part.slice(1, -1)}
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+
+    const token = match[0];
+    const key = `inline-${match.index}-${token.slice(0, 8)}`;
+
+    if (token.startsWith('`') && token.endsWith('`')) {
+      parts.push(
+        <code key={key} className="inline-code">
+          {token.slice(1, -1)}
         </code>
       );
-    }
-
-    // Process bold, italic, and links within text
-    // Replace **bold**
-    const tokens = [];
-    let remaining = part;
-    let keyIdx = 0;
-
-    // Regex for bold **...**, italic *...* or _..._, link [...](...)
-    const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_|\[[^\]]+\]\([^)]+\))/g;
-    let match;
-    let lastIndex = 0;
-
-    while ((match = regex.exec(remaining)) !== null) {
-      if (match.index > lastIndex) {
-        tokens.push(remaining.substring(lastIndex, match.index));
-      }
-
-      const matchText = match[0];
-      if (matchText.startsWith('**') && matchText.endsWith('**')) {
-        tokens.push(
-          <strong key={`${index}-${keyIdx++}`}>
-            {matchText.slice(2, -2)}
-          </strong>
+    } else if (token.startsWith('***') && token.endsWith('***')) {
+      parts.push(
+        <strong key={key}>
+          <em>{parseInline(token.slice(3, -3))}</em>
+        </strong>
+      );
+    } else if (
+      (token.startsWith('**') && token.endsWith('**')) ||
+      (token.startsWith('__') && token.endsWith('__'))
+    ) {
+      parts.push(
+        <strong key={key}>
+          {parseInline(token.slice(2, -2))}
+        </strong>
+      );
+    } else if (token.startsWith('~~') && token.endsWith('~~')) {
+      parts.push(
+        <del key={key}>
+          {parseInline(token.slice(2, -2))}
+        </del>
+      );
+    } else if (token.startsWith('[') && token.includes('](')) {
+      const linkMatch = token.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if (linkMatch) {
+        parts.push(
+          <a
+            key={key}
+            href={linkMatch[2]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="chat-markdown-link"
+          >
+            {parseInline(linkMatch[1])}
+          </a>
         );
-      } else if (
-        (matchText.startsWith('*') && matchText.endsWith('*')) ||
-        (matchText.startsWith('_') && matchText.endsWith('_'))
-      ) {
-        tokens.push(
-          <em key={`${index}-${keyIdx++}`}>
-            {matchText.slice(1, -1)}
-          </em>
-        );
-      } else if (matchText.startsWith('[') && matchText.includes('](')) {
-        const linkMatch = matchText.match(/\[([^\]]+)\]\(([^)]+)\)/);
-        if (linkMatch) {
-          tokens.push(
-            <a
-              key={`${index}-${keyIdx++}`}
-              href={linkMatch[2]}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {linkMatch[1]}
-            </a>
-          );
-        } else {
-          tokens.push(matchText);
-        }
+      } else {
+        parts.push(token);
       }
-
-      lastIndex = regex.lastIndex;
+    } else if (
+      (token.startsWith('*') && token.endsWith('*')) ||
+      (token.startsWith('_') && token.endsWith('_'))
+    ) {
+      parts.push(
+        <em key={key}>
+          {parseInline(token.slice(1, -1))}
+        </em>
+      );
+    } else {
+      parts.push(token);
     }
 
-    if (lastIndex < remaining.length) {
-      tokens.push(remaining.substring(lastIndex));
-    }
+    lastIndex = regex.lastIndex;
+  }
 
-    return <React.Fragment key={index}>{tokens}</React.Fragment>;
-  });
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts;
 }
 
+/**
+ * Main MarkdownRenderer Component - ChatGPT Grade
+ */
 export function MarkdownRenderer({ content }) {
   if (!content) return null;
 
-  // Extract <think>...</think> if present (common in Qwen / DeepSeek reasoning models)
+  // Extract <think>...</think> reasoning blocks (e.g. Qwen / DeepSeek)
   let cleanContent = content;
   let thinkContent = null;
   const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
@@ -143,13 +221,14 @@ export function MarkdownRenderer({ content }) {
     cleanContent = content.replace(/<think>[\s\S]*?(?:<\/think>|$)/i, '').trim();
   }
 
-  // Block parsing: split by code blocks ```...```
-  const codeBlockRegex = /(?:```([a-zA-Z0-9_-]*)\n([\s\S]*?)```|:::action_card\n([\s\S]*?):::)/g;
+  // Block parsing: Split by completed code blocks, unclosed streaming code blocks, or Action Cards
+  // Notice (?:```|$) allows unclosed code blocks during streaming to render smoothly!
+  const blockRegex = /(?:```([a-zA-Z0-9_+#.-]*)\r?\n([\s\S]*?)(?:```|$)|:::action_card\r?\n([\s\S]*?):::)/g;
   const blocks = [];
   let lastIndex = 0;
   let match;
 
-  while ((match = codeBlockRegex.exec(cleanContent)) !== null) {
+  while ((match = blockRegex.exec(cleanContent)) !== null) {
     if (match.index > lastIndex) {
       blocks.push({
         type: 'text',
@@ -157,14 +236,22 @@ export function MarkdownRenderer({ content }) {
       });
     }
 
-    blocks.push({
-      type: match[3] !== undefined ? 'action_card' : 'code',
-      rawData: match[3] ? match[3].trim() : null,
-      language: match[1] || 'text',
-      code: (match[2] || '').trimEnd()
-    });
+    if (match[3] !== undefined) {
+      blocks.push({
+        type: 'action_card',
+        rawData: match[3].trim()
+      });
+    } else {
+      const isUnclosed = !match[0].endsWith('```') && match.index + match[0].length === cleanContent.length;
+      blocks.push({
+        type: 'code',
+        language: match[1] || 'text',
+        code: (match[2] || '').trimEnd(),
+        isStreaming: isUnclosed
+      });
+    }
 
-    lastIndex = codeBlockRegex.lastIndex;
+    lastIndex = blockRegex.lastIndex;
   }
 
   if (lastIndex < cleanContent.length) {
@@ -178,10 +265,11 @@ export function MarkdownRenderer({ content }) {
     <div className="markdown-render-flow">
       {thinkContent && (
         <details className="think-box" open={!cleanContent}>
-          <summary className="think-summary">💭 Thinking Process {cleanContent ? '(Click to view)' : '...'}</summary>
+          <summary className="think-summary">💭 Reasoning Process {cleanContent ? '(Click to view)' : '...'}</summary>
           <div className="think-content">{thinkContent}</div>
         </details>
       )}
+
       {blocks.map((block, bIdx) => {
         if (block.type === 'action_card') {
           return <ActionCard key={`action-${bIdx}`} rawData={block.rawData} />;
@@ -193,12 +281,13 @@ export function MarkdownRenderer({ content }) {
               key={`code-${bIdx}`}
               language={block.language}
               code={block.code}
+              isStreaming={block.isStreaming}
             />
           );
         }
 
         // Parse regular text block for headings, lists, tables, quotes, paragraphs
-        const lines = block.content.split('\n');
+        const lines = block.content.split(/\r?\n/);
         const elements = [];
         let i = 0;
 
@@ -211,14 +300,14 @@ export function MarkdownRenderer({ content }) {
             continue;
           }
 
-          // Horizontal rule
-          if (trimmed === '---' || trimmed === '***') {
-            elements.push(<hr key={`hr-${bIdx}-${i}`} style={{ margin: '18px 0', border: 'none', borderTop: '1px solid var(--border-subtle)' }} />);
+          // Horizontal rule (--- or ***)
+          if (/^(\*\*\*|---|___)$/.test(trimmed)) {
+            elements.push(<hr key={`hr-${bIdx}-${i}`} className="chat-markdown-hr" />);
             i++;
             continue;
           }
 
-          // Headings
+          // Headings (h1, h2, h3, h4)
           if (trimmed.startsWith('# ')) {
             elements.push(<h1 key={`h1-${bIdx}-${i}`}>{parseInline(trimmed.slice(2))}</h1>);
             i++;
@@ -234,8 +323,13 @@ export function MarkdownRenderer({ content }) {
             i++;
             continue;
           }
+          if (trimmed.startsWith('#### ')) {
+            elements.push(<h4 key={`h4-${bIdx}-${i}`}>{parseInline(trimmed.slice(5))}</h4>);
+            i++;
+            continue;
+          }
 
-          // Blockquote
+          // Blockquote (> ...)
           if (trimmed.startsWith('> ')) {
             const quoteLines = [];
             while (i < lines.length && lines[i].trim().startsWith('> ')) {
@@ -250,14 +344,20 @@ export function MarkdownRenderer({ content }) {
             continue;
           }
 
-          // Table detection (| col 1 | col 2 |)
-          if (trimmed.startsWith('|') && trimmed.endsWith('|') && lines[i + 1] && lines[i + 1].includes('---')) {
-            const tableHeaders = trimmed.split('|').slice(1, -1).map(h => h.trim());
-            i += 2; // skip header and delimiter
+          // Table detection (| col 1 | col 2 | ... followed by | --- | --- |)
+          if (
+            trimmed.startsWith('|') &&
+            trimmed.endsWith('|') &&
+            lines[i + 1] &&
+            lines[i + 1].trim().startsWith('|') &&
+            lines[i + 1].includes('---')
+          ) {
+            const tableHeaders = trimmed.split('|').slice(1, -1).map((h) => h.trim());
+            i += 2; // skip header and separator row
 
             const rows = [];
             while (i < lines.length && lines[i].trim().startsWith('|')) {
-              const cells = lines[i].trim().split('|').slice(1, -1).map(c => c.trim());
+              const cells = lines[i].trim().split('|').slice(1, -1).map((c) => c.trim());
               rows.push(cells);
               i++;
             }
@@ -287,11 +387,11 @@ export function MarkdownRenderer({ content }) {
             continue;
           }
 
-          // Unordered list
-          if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+          // Unordered list (* , - , + )
+          if (/^[*+-]\s/.test(trimmed)) {
             const listItems = [];
-            while (i < lines.length && (lines[i].trim().startsWith('* ') || lines[i].trim().startsWith('- '))) {
-              listItems.push(lines[i].trim().slice(2));
+            while (i < lines.length && /^[*+-]\s/.test(lines[i].trim())) {
+              listItems.push(lines[i].trim().replace(/^[*+-]\s/, ''));
               i++;
             }
             elements.push(
@@ -304,7 +404,7 @@ export function MarkdownRenderer({ content }) {
             continue;
           }
 
-          // Ordered list
+          // Ordered list (1. , 2. , etc.)
           if (/^\d+\.\s/.test(trimmed)) {
             const listItems = [];
             while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
@@ -321,7 +421,7 @@ export function MarkdownRenderer({ content }) {
             continue;
           }
 
-          // Paragraph
+          // Standard paragraph
           elements.push(
             <p key={`p-${bIdx}-${i}`}>
               {parseInline(trimmed)}
@@ -335,4 +435,3 @@ export function MarkdownRenderer({ content }) {
     </div>
   );
 }
-

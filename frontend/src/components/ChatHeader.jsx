@@ -26,11 +26,12 @@ export function ChatHeader({
   onSelectModel
 }) {
   const [models, setModels] = useState([
-    { id: 'qwen2.5:3b', name: 'Qwen 2.5 (3B) [Ultra Fast]', description: 'Ultra-fast conversational model with instant replies', tag: 'Fast' },
-    { id: 'qwen3:1.7b', name: 'Qwen 3 (1.7B)', description: 'Fast local reasoning model on VPS', tag: 'Smart' },
-    { id: 'qwen2.5vl:3b', name: 'Qwen 2.5-VL (3B)', description: 'Multimodal Vision-Language for Image Analysis & OCR', tag: 'Vision' },
-    { id: 'kiaan-pro', name: 'Kiaan Pro 3.5', description: 'Optimized for high-speed conversational workflows', tag: 'Balanced' },
-    { id: 'kiaan-code', name: 'Kiaan Code Alpha', description: 'Specialized checkpoint tuned for multi-file system design', tag: 'Code' }
+    { id: 'gemma3:4b', name: 'Gemma 3 (4B) 🌟 [Default]', description: 'Google Gemma 3 - Deep reasoning, rich formatting & high quality', tag: 'Default' },
+    { id: 'qwen2.5:3b', name: 'Qwen 2.5 (3B) ⚡ [Fast]', description: 'Ultra-fast conversational model with instant replies', tag: 'Fast' },
+    { id: 'qwen3:1.7b', name: 'Qwen 3 (1.7B) 💡 [Fast Reasoning]', description: 'Fast local reasoning model on VPS', tag: 'Smart' },
+    { id: 'qwen3:4b', name: 'Qwen 3 (4B) 🧠 [Deep Reasoning]', description: 'Heavy 4B model (complex logic)', tag: 'Deep' },
+    { id: 'qwen2.5vl:3b', name: 'Qwen 2.5-VL (3B) 👁️ [Vision & OCR]', description: 'Multimodal Vision-Language for Image Analysis & OCR', tag: 'Vision' },
+    { id: 'kiaan-pro', name: 'Kiaan Pro 3.5', description: 'Optimized for high-speed conversational workflows', tag: 'Balanced' }
   ]);
   const [providerStatus, setProviderStatus] = useState({ available: false });
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
@@ -47,7 +48,10 @@ export function ChatHeader({
         if (!isMounted) return;
         if (data.models && data.models.length > 0) {
           setModels(data.models);
-          if (selectedModel?.id === 'kiaan-ultra' && data.models[0]?.id && !data.models[0].id.startsWith('kiaan-')) {
+          const matching = data.models.find((m) => m.id === selectedModel?.id);
+          if (matching) {
+            onSelectModel?.(matching);
+          } else if (!selectedModel?.id || selectedModel.id.startsWith('kiaan-')) {
             onSelectModel?.(data.models[0]);
           }
         }
@@ -160,7 +164,7 @@ export function ChatHeader({
           </button>
 
           {isModelDropdownOpen && (
-            <div className="dropdown-popover" style={{ left: 0, right: 'auto', minWidth: '280px' }}>
+            <div className="dropdown-popover" style={{ left: 0, right: 'auto', minWidth: '320px' }}>
               <div style={{ padding: '8px 12px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
                 Select Model ({providerStatus.available ? 'Online' : 'Offline Mode'})
               </div>
@@ -179,13 +183,13 @@ export function ChatHeader({
                       {m.name}
                     </div>
                     {m.description && (
-                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.35 }}>
                         {m.description}
                       </div>
                     )}
                   </div>
                   {currentModel.id === m.id && (
-                    <FiCheck style={{ color: 'var(--brand-primary)', fontSize: '15px' }} />
+                    <FiCheck style={{ color: 'var(--brand-primary)', fontSize: '15px', marginLeft: '8px' }} />
                   )}
                 </div>
               ))}
