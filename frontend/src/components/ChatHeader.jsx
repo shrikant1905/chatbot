@@ -147,7 +147,7 @@ export function ChatHeader({
         {/* Model Selector Pill */}
         <div className="dropdown-menu-wrapper" ref={modelRef}>
           <button
-            className="model-selector-pill"
+            className={`model-selector-pill ${isModelDropdownOpen ? 'active' : ''}`}
             onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
             aria-label="Select AI model"
             aria-expanded={isModelDropdownOpen}
@@ -159,40 +159,51 @@ export function ChatHeader({
               }}
               title={providerStatus.available ? 'AI Provider Connected' : 'AI Provider Offline (VPS/Local Ollama not running)'}
             />
-            <span>{currentModel.name}</span>
-            <FiChevronDown fontSize={12} />
+            <span className="model-selector-name">{currentModel.name}</span>
+            <FiChevronDown
+              fontSize={12}
+              style={{
+                transition: 'transform 0.2s ease',
+                transform: isModelDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}
+            />
           </button>
 
           {isModelDropdownOpen && (
-            <div className="dropdown-popover" style={{ left: 0, right: 'auto', minWidth: '320px' }}>
-              <div style={{ padding: '8px 12px', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+            <div className="dropdown-popover model-dropdown-popover">
+              <div className="model-dropdown-header">
                 Select Model ({providerStatus.available ? 'Online' : 'Offline Mode'})
               </div>
-              {models.map((m) => (
-                <div
-                  key={m.id}
-                  className="dropdown-item"
-                  onClick={() => {
-                    onSelectModel?.(m);
-                    setIsModelDropdownOpen(false);
-                    onShowToast?.(`Switched active model to ${m.name}`);
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.84rem' }}>
-                      {m.name}
-                    </div>
-                    {m.description && (
-                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.35 }}>
-                        {m.description}
+              <div className="model-dropdown-list">
+                {models.map((m) => {
+                  const isSelected = currentModel.id === m.id;
+                  return (
+                    <div
+                      key={m.id}
+                      className={`dropdown-item ${isSelected ? 'active' : ''}`}
+                      onClick={() => {
+                        onSelectModel?.(m);
+                        setIsModelDropdownOpen(false);
+                        onShowToast?.(`Switched active model to ${m.name}`);
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.84rem' }}>
+                          {m.name}
+                        </div>
+                        {m.description && (
+                          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.35 }}>
+                            {m.description}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  {currentModel.id === m.id && (
-                    <FiCheck style={{ color: 'var(--brand-primary)', fontSize: '15px', marginLeft: '8px' }} />
-                  )}
-                </div>
-              ))}
+                      {isSelected && (
+                        <FiCheck style={{ color: 'var(--brand-primary)', fontSize: '15px', marginLeft: '8px', flexShrink: 0 }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

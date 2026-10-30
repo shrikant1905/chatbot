@@ -96,7 +96,6 @@ export function MessageComposer({
       } catch {}
     }
     textareaRef.current?.focus();
-    onShowToast?.('Voice typing stopped.');
   };
 
   /**
@@ -104,12 +103,6 @@ export function MessageComposer({
    */
   const handleSwitchVoiceLang = (newLang) => {
     setVoiceLang(newLang);
-    const langLabels = {
-      'en-IN': 'English (India)',
-      'hi-IN': 'हिन्दी (Hindi)',
-      'en-US': 'English (US)'
-    };
-    onShowToast?.(`Language set to ${langLabels[newLang] || newLang}`);
 
     // If currently listening, update and restart instance with the new language
     if (isListening && recognitionRef.current) {
@@ -157,7 +150,7 @@ export function MessageComposer({
       recognition.onstart = () => {
         setIsListening(true);
         isListeningRef.current = true;
-        onShowToast?.('Listening... Speak now / Bolna shuru karein');
+        // Do NOT call toast here to avoid loop on Chrome speech pauses/restarts
       };
 
       recognition.onresult = (event) => {

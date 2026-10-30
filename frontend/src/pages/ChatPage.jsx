@@ -45,16 +45,22 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
   const [deleteTargetChat, setDeleteTargetChat] = useState(null);
   const [isClearChatConfirmOpen, setIsClearChatConfirmOpen] = useState(false);
 
-  // Toast System
+  // Toast System with duplicate prevention
   const [toasts, setToasts] = useState([]);
   const messagesEndRef = useRef(null);
 
   const showToast = (message, type = 'success') => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3500);
+    setToasts((prev) => {
+      // Prevent duplicate toasts from stacking
+      if (prev.some((t) => t.message === message)) {
+        return prev;
+      }
+      const id = Date.now() + Math.random();
+      setTimeout(() => {
+        setToasts((curr) => curr.filter((t) => t.id !== id));
+      }, 3000);
+      return [...prev, { id, message, type }];
+    });
   };
 
   // 1. Fetch conversations list from backend on mount

@@ -870,3 +870,35 @@
     margin-top: 4px !important;
   }
 }
+
+
+/* Dropdown Layering & Model Selector Text Truncation */
+.chat-header {
+  z-index: 30 !important;
+}
+
+.model-selector-name {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+  .chat-header {
+    z-index: 35 !important;
+  }
+
+  .model-selector-name {
+    max-width: 110px !important;
+  }
+
+  .model-dropdown-popover {
+    left: 0 !important;
+    width: calc(100vw - 20px) !important;
+    max-width: 320px !important;
+    max-height: min(340px, calc(100dvh - 110px)) !important;
+  }
+}
