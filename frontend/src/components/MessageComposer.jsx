@@ -117,7 +117,7 @@ export function MessageComposer({
   /**
    * Toggle Speech-to-Text Voice Typing
    */
-  const handleToggleVoiceInput = () => {
+  const handleToggleVoiceInput = async () => {
     if (isListening) {
       handleStopListening();
       return;
@@ -129,6 +129,24 @@ export function MessageComposer({
         'error'
       );
       return;
+    }
+
+    // Pre-flight check: trigger browser's native microphone permission prompt if not yet allowed
+    if (navigator?.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Immediately release tracks so SpeechRecognition has hardware access
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (micErr) {
+        console.warn('Microphone permission check:', micErr);
+        if (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError') {
+          onShowToast?.(
+            'Microphone access blocked. Click the lock/settings icon in the browser URL bar and change Microphone to "Allow".',
+            'error'
+          );
+          return;
+        }
+      }
     }
 
     try {
@@ -190,10 +208,23 @@ export function MessageComposer({
         if (event.error === 'not-allowed') {
           isListeningRef.current = false;
           setIsListening(false);
-          onShowToast?.(
-            'Microphone access denied. Please click the lock icon in the address bar and allow microphone.',
-            'error'
-          );
+
+          const isHttpInsecure =
+            window.location.protocol === 'http:' &&
+            window.location.hostname !== 'localhost' &&
+            window.location.hostname !== '127.0.0.1';
+
+          if (isHttpInsecure) {
+            onShowToast?.(
+              'Chrome blocks microphone on HTTP IP addresses. Please use localhost or enable insecure origin in chrome://flags.',
+              'error'
+            );
+          } else {
+            onShowToast?.(
+              'Microphone access blocked. Click the lock/tune icon next to the URL in the address bar and Allow microphone.',
+              'error'
+            );
+          }
         } else if (event.error === 'network') {
           isListeningRef.current = false;
           setIsListening(false);
@@ -244,7 +275,7 @@ export function MessageComposer({
     const messageText = input.trim();
     const filesToSend = [...attachedFiles];
 
-    onSend(messageText, filesToSend);
+    onSend(messageText, filesToSend, webSearchActive);
 
     setInput('');
     setAttachedFiles([]);

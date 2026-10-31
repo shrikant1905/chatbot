@@ -2,6 +2,7 @@ import { AiProviderInterface } from './aiProviderInterface.js';
 import fs from 'fs/promises';
 import { concurrencyQueue } from '../queue/concurrencyQueue.js';
 import { ToolRegistry } from '../tools/toolRegistry.js';
+import { TavilyService } from '../search/tavilyService.js';
 
 export class OllamaProvider extends AiProviderInterface {
   constructor(config) {
@@ -98,7 +99,7 @@ export class OllamaProvider extends AiProviderInterface {
     }
   }
 
-  async generateResponse({ model, messages, attachments = [], userMemories = [], stream = false, onChunk, signal }) {
+  async generateResponse({ model, messages, attachments = [], userMemories = [], webSearch = false, stream = false, onChunk, signal }) {
     let selectedModel = model || this.defaultModel;
 
     // Gracefully map placeholder/mock IDs to the real default model configured on the server
@@ -114,6 +115,7 @@ export class OllamaProvider extends AiProviderInterface {
           messages,
           attachments,
           userMemories,
+          webSearch,
           stream,
           onChunk,
           signal
@@ -157,20 +159,25 @@ export class OllamaProvider extends AiProviderInterface {
       return [];
     }
 
-    const availableTools = ToolRegistry.list(matchedDomain);
-    return availableTools.slice(0, 3).map((t) => ({
-      type: 'function',
-      function: {
-        name: t.name,
-        description: t.description,
-        parameters: t.parameters
-      }
-    }));
+    try {
+      const availableTools = await ToolRegistry.getToolsForAi(matchedDomain);
+      return availableTools.slice(0, 3).map((t) => ({
+        type: 'function',
+        function: {
+          name: t.function?.name || t.name,
+          description: t.function?.description || t.description,
+          parameters: t.function?.parameters || t.parameters
+        }
+      }));
+    } catch {
+      return [];
+    }
   }
 
-  async _executeOllamaInference({ selectedModel, messages, attachments = [], userMemories = [], stream, onChunk, signal }) {
+  async _executeOllamaInference({ selectedModel, messages, attachments = [], userMemories = [], webSearch = false, stream, onChunk, signal }) {
     // 1. Format messages for Ollama API
     const formattedMessages = [];
+    const lastUserPrompt = messages[messages.length - 1]?.content || '';
 
     // System instruction: Crisp, fast, and structured like ChatGPT
     const systemPromptParts = [
@@ -186,6 +193,21 @@ export class OllamaProvider extends AiProviderInterface {
         .map((m) => `- ${m.key_name}: ${m.value_text}`)
         .join('\n');
       systemPromptParts.push(`Relevant user context:\n${memoryPrompt}`);
+    }
+
+    // Live Web Search Augmented Generation (via Tavily)
+    if (TavilyService.isAvailable() && TavilyService.shouldSearch(lastUserPrompt, webSearch)) {
+      try {
+        const searchStart = performance.now();
+        const searchResults = await TavilyService.search(lastUserPrompt, { maxResults: 3, signal });
+        if (searchResults && searchResults.results.length > 0) {
+          const searchContext = TavilyService.formatForPrompt(searchResults);
+          systemPromptParts.push(searchContext);
+          console.log(`[LATENCY TRACE] Tavily Web Search integrated in ${Math.round(performance.now() - searchStart)}ms (${searchResults.results.length} sources)`);
+        }
+      } catch (searchErr) {
+        console.warn('[OllamaProvider] Tavily web search skipped:', searchErr.message);
+      }
     }
 
     formattedMessages.push({
@@ -260,7 +282,6 @@ export class OllamaProvider extends AiProviderInterface {
     }
 
     // 2. Select targeted tools (0 tools for normal chats, max 3 for action queries)
-    const lastUserPrompt = messages[messages.length - 1]?.content || '';
     const targetedTools = await this._selectTargetedTools(lastUserPrompt, hasImages);
 
     // Context size: Default to 2048 to prevent OOM crash on VPS, can be overridden via OLLAMA_NUM_CTX

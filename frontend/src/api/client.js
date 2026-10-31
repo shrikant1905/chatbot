@@ -78,13 +78,13 @@ export const apiClient = {
     }),
 
   // Message Sending with SSE Streaming Support
-  sendMessage: async ({ conversationId, content, model, stream = true, attachmentIds = [], onChunk, signal }) => {
+  sendMessage: async ({ conversationId, content, model, stream = true, webSearch = false, attachmentIds = [], onChunk, signal }) => {
     const url = `${BASE_URL}/conversations/${conversationId}/messages`;
 
     if (!stream) {
       return request(`/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ content, model, stream: false, attachmentIds }),
+        body: JSON.stringify({ content, model, stream: false, webSearch, attachmentIds }),
         signal
       });
     }
@@ -96,7 +96,7 @@ export const apiClient = {
         'Content-Type': 'application/json',
         'X-User-Id': getOrCreateClientId()
       },
-      body: JSON.stringify({ content, model, stream: true, attachmentIds }),
+      body: JSON.stringify({ content, model, stream: true, webSearch, attachmentIds }),
       signal
     });
 
@@ -231,4 +231,3 @@ export const apiClient = {
       body: JSON.stringify({ messageId, rating, comment })
     })
 };
-

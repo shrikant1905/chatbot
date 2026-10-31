@@ -9,7 +9,7 @@ import { getPool } from '../db/pool.js';
 export class MessageController {
   static async sendMessage(req, res, next) {
     const { conversationId } = req.params;
-    const { content, model, stream = false, attachmentIds = [] } = req.body;
+    const { content, model, stream = false, attachmentIds = [], webSearch = false } = req.body;
 
     if (!content || !content.trim()) {
       return res.status(400).json({ success: false, error: 'Message content is required' });
@@ -102,6 +102,7 @@ export class MessageController {
             messages: contextMessages,
             attachments: attachmentsData,
             userMemories,
+            webSearch: Boolean(webSearch),
             stream: true,
             onChunk: (chunk) => {
               accumulatedContent += chunk;
@@ -153,6 +154,7 @@ export class MessageController {
             messages: contextMessages,
             attachments: attachmentsData,
             userMemories,
+            webSearch: Boolean(webSearch),
             stream: false,
             signal: abortController.signal
           });
@@ -228,6 +230,7 @@ export class MessageController {
         model: model || 'kiaan-ultra',
         messages: contextMessages,
         userMemories,
+        webSearch: false,
         stream: false
       });
 
@@ -248,4 +251,3 @@ export class MessageController {
     }
   }
 }
-

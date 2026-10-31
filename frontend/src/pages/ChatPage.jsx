@@ -141,7 +141,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
   };
 
   // Handle Sending a Message (with High-Speed Smooth Typewriter Queue)
-  const handleSendMessage = async (text, files = []) => {
+  const handleSendMessage = async (text, files = [], webSearch = false) => {
     if (isGenerating) return;
 
     let targetConvId = activeChatId;
@@ -235,6 +235,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
         content: text,
         model: selectedModel.id,
         stream: true,
+        webSearch,
         attachmentIds,
         signal: abortControllerRef.current.signal,
         onChunk: (delta) => {

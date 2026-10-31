@@ -22,6 +22,7 @@ export class AiProviderInterface {
    * @param {Array<{ role: string, content: string }>} options.messages - Context messages
    * @param {Array<Object>} [options.attachments] - Validated attachments
    * @param {Array<Object>} [options.userMemories] - User memory items
+   * @param {boolean} [options.webSearch] - Whether live web search is enabled or requested
    * @param {boolean} [options.stream] - Whether to stream response chunks
    * @param {Function} [options.onChunk] - Callback for streaming chunks
    * @param {AbortSignal} [options.signal] - Cancellation signal
@@ -31,4 +32,3 @@ export class AiProviderInterface {
     throw new Error('generateResponse() must be implemented by subclass');
   }
 }
-

@@ -28,6 +28,10 @@ export const config = {
     openaiApiKey: process.env.OPENAI_API_KEY || '',
     openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
   },
+  tavily: {
+    apiKey: process.env.TAVILY_API_KEY || '',
+    enabled: process.env.TAVILY_SEARCH_ENABLED === 'true'
+  },
   upload: {
     dir: path.resolve(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads'),
     maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB || '25', 10)
