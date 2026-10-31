@@ -1,13 +1,13 @@
 import React from 'react';
 import { SUGGESTIONS } from '../utils/sampleData';
 import { SuggestionCard } from './SuggestionCard';
-import { FiZap } from 'react-icons/fi';
+import { Orb3D } from './Orb3D';
 
 export function WelcomeScreen({ onSelectPrompt }) {
   return (
     <div className="welcome-screen-wrapper">
-      <div className="welcome-brand-symbol">
-        <FiZap />
+      <div className="welcome-hero-stage">
+        <Orb3D size={150} />
       </div>
 
       <h1 className="welcome-heading">
@@ -30,4 +30,3 @@ export function WelcomeScreen({ onSelectPrompt }) {
     </div>
   );
 }
-

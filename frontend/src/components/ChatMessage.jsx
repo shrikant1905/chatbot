@@ -143,7 +143,15 @@ export function ChatMessage({
   return (
     <div className={`message-row ${isAssistant ? 'assistant' : 'user'}`}>
       <div className={`message-avatar ${isAssistant ? 'assistant' : 'user'}`}>
-        {isAssistant ? <FiZap /> : <FiUser />}
+        {isAssistant ? (
+          <img
+            src="/assets/kiaan-orb-3d.png"
+            alt="Kiaan AI"
+            className="assistant-avatar-orb"
+          />
+        ) : (
+          <FiUser />
+        )}
       </div>
 
       <div className="message-body-wrapper">
@@ -170,8 +178,18 @@ export function ChatMessage({
             </div>
           ) : isAssistant ? (
             <>
+              {message.isStreaming && !message.content && (
+                <div className="streaming-thinking-indicator">
+                  <div className="thinking-dots">
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                  </div>
+                  <span className="thinking-label">Thinking...</span>
+                </div>
+              )}
               <MarkdownRenderer content={message.content} showLineNumbers={codeLineNumbers} />
-              {message.isStreaming && <span className="typing-cursor" />}
+              {message.isStreaming && Boolean(message.content) && <span className="typing-cursor" />}
             </>
           ) : (
             <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>

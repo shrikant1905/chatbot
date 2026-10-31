@@ -103,7 +103,11 @@ export function Sidebar({
             title="Start new conversation"
           >
             <div className="brand-logo-container">
-              <span className="brand-logo-icon">K</span>
+              <img
+                src="/assets/kiaan-orb-3d.png"
+                alt="Kiaan AI"
+                className="sidebar-brand-orb"
+              />
             </div>
             {!isCollapsed && (
               <div className="brand-info">

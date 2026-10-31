@@ -83,7 +83,7 @@ export class HealthController {
     }
 
     // 3. Model Inference (Single 3-word test)
-    const model = req.query.model || config.ai.ollamaDefaultModel || 'qwen3:1.7b';
+    const model = req.query.model || config.ai.ollamaDefaultModel || 'gemma3:4b';
     try {
       const inferStart = performance.now();
       const inferRes = await fetch(`${ollamaUrl}/api/chat`, {
@@ -93,7 +93,8 @@ export class HealthController {
           model,
           messages: [{ role: 'user', content: 'Say OK' }],
           stream: false,
-          options: { num_predict: 10 }
+          keep_alive: '24h',
+          options: { num_predict: 5, num_thread: 8 }
         })
       });
       const inferData = await inferRes.json().catch(() => ({}));

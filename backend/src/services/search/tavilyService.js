@@ -49,6 +49,18 @@ export class TavilyService {
       }
     }
 
+    // Exclude basic clock, date, calendar, day questions (handled with 0ms latency by system clock)
+    const dateTimeExclusions = [
+      /^(what|which|tell me|aaj|kya)?\s*(is\s+)?(the\s+)?(current\s+)?(date|time|day|year|month|clock|samay|tarikh|din)\s*(is\s+)?(it|today|now)?\b/i,
+      /\b(which date\b|which day\b|what date\b|what day\b|what time is it|current time|current date|aaj kya din|aaj konsa din|aaj kya tarikh|aaj konsi date)\b/i
+    ];
+
+    for (const pattern of dateTimeExclusions) {
+      if (pattern.test(trimmed)) {
+        return false;
+      }
+    }
+
     // Temporal, live, recent, and factual search patterns (including current year 2026 and future)
     const searchPatterns = [
       /\b(current|currently|latest|recent|recently|today|tonight|yesterday|tomorrow|this week|this month|this year|now|right now|live)\b/i,
@@ -140,10 +152,10 @@ export class TavilyService {
 
       console.log(`[Tavily Search Success] Retrieved ${rawResults.length} sources in ${elapsedMs}ms`);
 
-      const sanitizedResults = rawResults.slice(0, maxResults).map((r) => ({
-        title: (r.title || 'Untitled Source').trim(),
+      const sanitizedResults = rawResults.slice(0, Math.min(maxResults, 2)).map((r) => ({
+        title: (r.title || 'Source').trim(),
         url: (r.url || '').trim(),
-        content: (r.content || '').slice(0, 250).trim(),
+        content: (r.content || '').slice(0, 100).trim(),
         score: typeof r.score === 'number' ? r.score : 0
       })).filter((r) => Boolean(r.url));
 
@@ -186,16 +198,15 @@ export class TavilyService {
     });
 
     const sourcesList = searchData.results
-      .slice(0, 3)
+      .slice(0, 2)
       .map((r, i) => `[${i + 1}] [${r.title}](${r.url}): ${r.content}`)
       .join('\n');
 
     return [
-      `[Real-Time Live Web Search Information (Year: 2026, Date: ${currentDateStr})]`,
-      `User Question: "${searchData.query}"`,
+      `[Web Search Context (Year 2026, ${currentDateStr})]:`,
       searchData.answer ? `Verified Quick Answer: ${searchData.answer}` : '',
-      `Verified Live Web Sources:\n${sourcesList}`,
-      `Instructions for Web Search Response:\n- Synthesize an accurate, concise answer based on the verified information above.\n- ALWAYS cite the relevant sources using clickable Markdown links: e.g. [Source Title](URL).\n- Do not invent non-existent facts.`
+      `Sources:\n${sourcesList}`,
+      `- Answer the user question accurately based on these sources. Always cite sources with Markdown links [Title](URL).`
     ].filter(Boolean).join('\n\n');
   }
 }

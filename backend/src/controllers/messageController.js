@@ -69,8 +69,8 @@ export class MessageController {
         attachmentsData = attRows;
       }
 
-      // 5. Build bounded context window and retrieve user memories
-      const contextMessages = await MessageService.buildConversationContext(conversationId, 10);
+      // 5. Build bounded context window (recent 6 messages for fast CPU response) and retrieve user memories
+      const contextMessages = await MessageService.buildConversationContext(conversationId, 6);
       const userMemories = await MemoryService.getMemories(req.user.id);
 
       // 6. Get AI Provider
