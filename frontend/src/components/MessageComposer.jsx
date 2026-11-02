@@ -7,7 +7,8 @@ import {
   FiX,
   FiSquare,
   FiFile,
-  FiCheck
+  FiCheck,
+  FiImage
 } from 'react-icons/fi';
 
 export function MessageComposer({
@@ -29,6 +30,7 @@ export function MessageComposer({
 
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [webSearchActive, setWebSearchActive] = useState(false);
+  const [imageModeActive, setImageModeActive] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceLang, setVoiceLang] = useState('en-IN'); // Default to English (India) / Hinglish
 
@@ -378,6 +380,8 @@ export function MessageComposer({
               ? 'Kiaan AI is responding...'
               : isListening
               ? 'Listening... Speak now, your words will appear here...'
+              : imageModeActive
+              ? 'Describe the image you want to generate (e.g. A cybernetic tiger in neon rain)...'
               : 'Message Kiaan AI... (Shift + Enter for new line)'
           }
           rows={1}
@@ -436,6 +440,25 @@ export function MessageComposer({
               <FiGlobe
                 style={webSearchActive ? { color: 'var(--brand-primary)' } : {}}
               />
+            </button>
+            <button
+              type="button"
+              className={`composer-icon-btn ${imageModeActive ? 'image-mode-active' : ''}`}
+              onClick={() => {
+                const next = !imageModeActive;
+                setImageModeActive(next);
+                onShowToast?.(
+                  `Image generation mode ${next ? 'enabled (Stable Diffusion 1.5)' : 'disabled'}`
+                );
+              }}
+              aria-label="Toggle AI image generation mode"
+              title={
+                imageModeActive
+                  ? 'Image generation mode enabled (Stable Diffusion 1.5)'
+                  : 'Generate AI Image (Stable Diffusion)'
+              }
+            >
+              <FiImage />
             </button>
           </div>
 

@@ -15,6 +15,7 @@ import {
   FiVolumeX
 } from 'react-icons/fi';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { ImageGenerationCard } from './ImageGenerationCard.jsx';
 import { apiClient } from '../api/client';
 
 export function formatMessageTime(timestamp) {
@@ -206,13 +207,12 @@ export function ChatMessage({
 
                 if (isImage) {
                   return (
-                    <img
-                      key={att.id}
-                      src={fileUrl}
-                      alt={att.original_name}
-                      className="attachment-media-image"
-                      onClick={() => window.open(fileUrl, '_blank')}
-                      title="Click to view full image"
+                    <ImageGenerationCard
+                      key={att.id || att.url}
+                      imageUrl={fileUrl}
+                      prompt={message.meta?.prompt || att.original_name}
+                      filename={att.original_name}
+                      onShowToast={onShowToast}
                     />
                   );
                 }

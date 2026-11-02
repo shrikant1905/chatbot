@@ -142,7 +142,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
   };
 
   // Handle Sending a Message (with High-Speed Smooth Typewriter Queue)
-  const handleSendMessage = async (text, files = [], webSearch = false) => {
+  const handleSendMessage = async (text, files = [], webSearch = false, isImageMode = false) => {
     if (isGenerating) return;
 
     let targetConvId = activeChatId;
@@ -155,6 +155,100 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
     const calculatedTitle = isNewChat
       ? text.trim().slice(0, 36) + (text.trim().length > 36 ? '...' : '')
       : activeConversation.title;
+
+    // ComfyUI & Stable Diffusion 1.5 Image Generation Intercept
+    if (isImageMode || text.trim().startsWith('/image')) {
+      const prompt = text.replace(/^\/image\s*/i, '').trim();
+      if (!prompt) {
+        showToast('Please provide an image prompt.', 'error');
+        return;
+      }
+
+      const optimisticUserMsg = {
+        id: `temp-user-${Date.now()}`,
+        role: 'user',
+        content: `🎨 Generate Image: "${prompt}"`,
+        created_at: new Date().toISOString(),
+        attachments: []
+      };
+
+      const assistantId = `temp-assist-${Date.now()}`;
+      const initialAssistantMsg = {
+        id: assistantId,
+        role: 'assistant',
+        content: '🎨 Generating high-resolution image with Stable Diffusion 1.5...',
+        isStreaming: true,
+        created_at: new Date().toISOString(),
+        model: 'Stable Diffusion 1.5'
+      };
+
+      setActiveConversation((prev) => ({
+        ...prev,
+        id: targetConvId,
+        title: calculatedTitle,
+        messages: [...prev.messages, optimisticUserMsg, initialAssistantMsg]
+      }));
+
+      setIsGenerating(true);
+      showToast('Generating image with Stable Diffusion 1.5...');
+
+      try {
+        const res = await apiClient.generateImage(prompt, targetConvId);
+        if (res.success && res.image?.url) {
+          const completedMsg = {
+            id: res.message?.id || assistantId,
+            role: 'assistant',
+            content: `Here is your generated image for: **"${prompt}"**`,
+            isStreaming: false,
+            created_at: new Date().toISOString(),
+            model: 'Stable Diffusion 1.5',
+            attachments: [
+              {
+                id: `img-${Date.now()}`,
+                url: res.image.url,
+                original_name: res.image.filename,
+                mime_type: 'image/png'
+              }
+            ],
+            meta: {
+              is_generated_image: true,
+              image_url: res.image.url,
+              filename: res.image.filename,
+              prompt
+            }
+          };
+
+          setActiveConversation((prev) => ({
+            ...prev,
+            messages: prev.messages.map((m) => (m.id === assistantId ? completedMsg : m))
+          }));
+
+          if (preferences.soundEffects) {
+            soundEffectsManager.playReceive();
+          }
+          showToast('Image generated successfully!');
+        } else {
+          throw new Error(res.error || 'Failed to generate image.');
+        }
+      } catch (err) {
+        setActiveConversation((prev) => ({
+          ...prev,
+          messages: prev.messages.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  isStreaming: false,
+                  content: `⚠️ Image Generation Notice:\n${err.message}\n\n*Note: Ensure ComfyUI is running on the server ('pm2 start comfyui-engine') to generate images.*`
+                }
+              : m
+          )
+        }));
+        showToast(err.message, 'error');
+      } finally {
+        setIsGenerating(false);
+      }
+      return;
+    }
 
     // Upload files if any
     let attachmentIds = [];

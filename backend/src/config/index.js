@@ -47,5 +47,17 @@ export const config = {
   upload: {
     dir: path.resolve(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads'),
     maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB || '25', 10)
+  },
+  comfyUI: {
+    baseUrl: process.env.COMFYUI_URL || 'http://127.0.0.1:8188',
+    enabled: process.env.COMFYUI_ENABLED !== 'false',
+    defaultModel: process.env.SD_MODEL_NAME || 'v1-5-pruned-emaonly.safetensors',
+    concurrency: parseInt(process.env.IMAGE_QUEUE_CONCURRENCY || '1', 10),
+    steps: parseInt(process.env.SD_STEPS || '20', 10),
+    cfg: parseFloat(process.env.SD_CFG || '7.0'),
+    sampler: process.env.SD_SAMPLER || 'euler_ancestral',
+    scheduler: process.env.SD_SCHEDULER || 'normal',
+    width: parseInt(process.env.SD_WIDTH || '512', 10),
+    height: parseInt(process.env.SD_HEIGHT || '512', 10)
   }
 };

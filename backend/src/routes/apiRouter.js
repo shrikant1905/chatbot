@@ -9,6 +9,7 @@ import { MemoryController } from '../controllers/memoryController.js';
 import { FeedbackController } from '../controllers/feedbackController.js';
 import { GatewayController } from '../controllers/gatewayController.js';
 import { VisionController } from '../controllers/visionController.js';
+import { ImageController } from '../controllers/imageController.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
@@ -18,6 +19,8 @@ export const apiRouter = Router();
 apiRouter.get('/health', HealthController.check);
 apiRouter.get('/health/benchmark', HealthController.benchmark);
 apiRouter.get('/models', ModelController.listModels);
+apiRouter.get('/images/health', ImageController.health);
+apiRouter.get('/images/file/:filename', ImageController.serveFile);
 
 // Authenticated Routes
 apiRouter.use(authMiddleware);
@@ -65,4 +68,7 @@ apiRouter.get('/gateway/queue/status', GatewayController.getQueueMetrics);
 
 // Multimodal Vision & Image Analysis Endpoint
 apiRouter.post('/ai/image/analyze', upload.single('image'), VisionController.analyzeImage);
+
+// ComfyUI & Stable Diffusion 1.5 Image Generation
+apiRouter.post('/images/generate', ImageController.generateImage);
 

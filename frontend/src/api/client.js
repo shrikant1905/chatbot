@@ -225,6 +225,14 @@ export const apiClient = {
     return request('/ai/image/analyze', { method: 'POST', body: formData });
   },
 
+  // ComfyUI & Stable Diffusion 1.5 Image Generation
+  generateImage: (prompt, conversationId, options = {}) =>
+    request('/images/generate', {
+      method: 'POST',
+      body: JSON.stringify({ prompt, conversationId, ...options })
+    }),
+  getComfyUIHealth: () => request('/images/health'),
+
   submitFeedback: (messageId, rating, comment = null) =>
     request('/feedback', {
       method: 'POST',

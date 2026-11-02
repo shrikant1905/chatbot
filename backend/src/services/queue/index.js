@@ -1,6 +1,8 @@
 import { isRedisReady, closeRedisConnections, getSharedRedisClient } from './redisConnection.js';
 import { enqueueAiJob, getAiQueueMetrics, closeAiQueue } from './aiQueue.js';
 import { initAiWorker, closeAiWorker } from './aiWorker.js';
+import { enqueueImageJob, getImageQueueMetrics, closeImageQueue } from './imageQueue.js';
+import { initImageWorker, closeImageWorker } from './imageWorker.js';
 import { AiStreamBridge } from './aiStreamBridge.js';
 import { concurrencyQueue } from './concurrencyQueue.js';
 import { config } from '../../config/index.js';
@@ -20,6 +22,7 @@ export function initializeQueueServices() {
     try {
       getSharedRedisClient(); // Kick-off initial connection
       initAiWorker();
+      initImageWorker();
     } catch (err) {
       console.warn('[Queue Initialization] Redis unavailable, fallback mode active:', err.message);
     }
@@ -36,6 +39,8 @@ export async function closeAllQueueServices() {
   await Promise.allSettled([
     closeAiWorker(),
     closeAiQueue(),
+    closeImageWorker(),
+    closeImageQueue(),
     AiStreamBridge.close(),
     closeRedisConnections()
   ]);
@@ -49,6 +54,11 @@ export {
   closeAiQueue,
   initAiWorker,
   closeAiWorker,
+  enqueueImageJob,
+  getImageQueueMetrics,
+  closeImageQueue,
+  initImageWorker,
+  closeImageWorker,
   AiStreamBridge,
   concurrencyQueue
 };
