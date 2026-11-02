@@ -24,6 +24,7 @@ export const config = {
     provider: process.env.AI_PROVIDER || 'ollama',
     ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://159.198.65.194:11434',
     ollamaDefaultModel: process.env.OLLAMA_DEFAULT_MODEL || 'gemma3:4b',
+    ollamaToolModel: process.env.OLLAMA_TOOL_MODEL || 'qwen2.5:3b',
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
     openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',

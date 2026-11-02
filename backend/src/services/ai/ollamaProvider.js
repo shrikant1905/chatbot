@@ -11,6 +11,7 @@ export class OllamaProvider extends AiProviderInterface {
     super('ollama');
     this.baseUrl = (config.ollamaBaseUrl || 'http://127.0.0.1:11434').replace(/\/+$/, '');
     this.defaultModel = config.ollamaDefaultModel || 'gemma3:4b';
+    this.toolModel = config.ollamaToolModel || 'qwen2.5:3b';
 
     // Warm-up ping to keep default model pre-loaded in VPS RAM (Zero Cold-Start Lag)
     this._warmupDefaultModel();
@@ -398,8 +399,6 @@ export class OllamaProvider extends AiProviderInterface {
   }
 
   async _executeOllamaInference({ selectedModel, messages, attachments = [], userMemories = [], webSearch = false, stream, onChunk, signal }) {
-    // 0. Dedicated Model Enforcement: Unload any other models currently occupying RAM to avoid swap thrashing
-    await this._ensureDedicatedRam(selectedModel);
 
     // 1. Dynamic Query Classification for Instant Latency
     const lastUserPrompt = messages[messages.length - 1]?.content || '';
@@ -558,13 +557,22 @@ export class OllamaProvider extends AiProviderInterface {
     // 2. Select targeted tools (0 tools for normal chats, max 3 for action queries)
     const targetedTools = await this._selectTargetedTools(lastUserPrompt, hasImages);
 
+    // Use Qwen only when operational tools are available.
+    // Keep the selected/default model for normal conversations.
+    const inferenceModel = targetedTools.length > 0
+      ? this.toolModel
+      : selectedModel;
+
+    // Load only the model needed for this inference.
+    await this._ensureDedicatedRam(inferenceModel);
+
     // Optimized dynamic parameters for fast CPU response on VPS
     const numCtx = isQuickQuery ? 512 : isWebSearchApplied ? 768 : (parseInt(process.env.OLLAMA_NUM_CTX, 10) || 1024);
     const numPredict = isQuickQuery ? 128 : isWebSearchApplied ? 256 : (parseInt(process.env.OLLAMA_NUM_PREDICT, 10) || 512);
     const numThread = parseInt(process.env.OLLAMA_NUM_THREAD, 10) || 8;
 
     const payload = {
-      model: selectedModel,
+      model: inferenceModel,
       messages: formattedMessages,
       stream: Boolean(stream),
       keep_alive: '24h',
@@ -582,7 +590,7 @@ export class OllamaProvider extends AiProviderInterface {
       payload.tools = targetedTools;
     }
 
-    console.log(`[LATENCY TRACE] Step 1: Dispatching to Ollama (Model: ${selectedModel}, Tools: ${targetedTools.length}, Images: ${hasImages}, Context: ${numCtx}, Threads: ${numThread})`);
+    console.log(`[LATENCY TRACE] Step 1: Dispatching to Ollama (Model: ${inferenceModel}, Tools: ${targetedTools.length}, Images: ${hasImages}, Context: ${numCtx}, Threads: ${numThread})`);
     const fetchStart = performance.now();
 
     // Dispatch via Native HTTP streaming (Zero Headers Timeout)
@@ -621,7 +629,7 @@ export class OllamaProvider extends AiProviderInterface {
 
     return {
       content: fullContent,
-      model: selectedModel
+      model: inferenceModel
     };
   }
 }

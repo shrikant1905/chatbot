@@ -1,3 +1,4 @@
+import mysql from 'mysql2/promise';
 import { runMigrations } from '../db/migrate.js';
 import { getPool, closePool } from '../db/pool.js';
 import { config } from '../config/index.js';
@@ -6,6 +7,16 @@ import { config } from '../config/index.js';
 config.db.database = 'kiaan_ai_test';
 
 export async function initTestDatabase() {
+  // Ensure the isolated test database exists before creating the pool
+  const connection = await mysql.createConnection({
+    host: config.db.host,
+    port: config.db.port,
+    user: config.db.user,
+    password: config.db.password,
+  });
+  await connection.query('CREATE DATABASE IF NOT EXISTS `kiaan_ai_test` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;');
+  await connection.end();
+
   const pool = getPool();
   await runMigrations(pool);
   return pool;
