@@ -9,7 +9,10 @@ import {
   FiSliders,
   FiChevronLeft,
   FiChevronRight,
-  FiCheck
+  FiCheck,
+  FiLogIn,
+  FiLogOut,
+  FiShield
 } from 'react-icons/fi';
 
 export function Sidebar({
@@ -23,7 +26,10 @@ export function Sidebar({
   isCollapsed,
   onToggleCollapse,
   isMobileOpen,
-  onCloseMobile
+  onCloseMobile,
+  currentUser,
+  onOpenAuth,
+  onLogout
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingChatId, setEditingChatId] = useState(null);
@@ -288,6 +294,24 @@ export function Sidebar({
               <span>{searchQuery ? 'No matching chats found' : 'No conversations yet'}</span>
             </div>
           )}
+
+          {!currentUser && !isCollapsed && (
+            <div className="sidebar-guest-card">
+              <div className="sidebar-guest-badge">
+                <FiShield />
+                <span>Guest Mode</span>
+              </div>
+              <p>Chats are not saved. Sign in to save your history permanently!</p>
+              <button
+                type="button"
+                className="sidebar-auth-cta"
+                onClick={onOpenAuth}
+              >
+                <FiLogIn />
+                <span>Sign In / Register</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Footer with Settings & Profile */}
@@ -302,23 +326,55 @@ export function Sidebar({
             {!isCollapsed && <span>Settings</span>}
           </button>
 
-          <div
-            className="user-profile-tile"
-            onClick={onOpenSettings}
-            role="button"
-            tabIndex={0}
-            title="Alex Morgan (Workspace Member)"
-          >
-            <div className="user-avatar">
-              <span>AM</span>
-            </div>
-            {!isCollapsed && (
-              <div className="user-details">
-                <span className="user-name">Alex Morgan</span>
-                <span className="user-role">Workspace Member</span>
+          {currentUser ? (
+            <div className="user-profile-tile-container">
+              <div
+                className="user-profile-tile"
+                onClick={onOpenSettings}
+                role="button"
+                tabIndex={0}
+                title={`${currentUser.name} (${currentUser.email || 'Member'})`}
+              >
+                <div className="user-avatar">
+                  <span>{currentUser.avatar_initials || 'AM'}</span>
+                </div>
+                {!isCollapsed && (
+                  <div className="user-details">
+                    <span className="user-name">{currentUser.name}</span>
+                    <span className="user-role">{currentUser.plan_badge || 'Active Member'}</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  className="sidebar-logout-btn"
+                  onClick={onLogout}
+                  title="Sign Out"
+                  aria-label="Sign Out"
+                >
+                  <FiLogOut />
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="sidebar-guest-signin-btn"
+              onClick={onOpenAuth}
+              title="Sign in to save your chats"
+            >
+              <div className="user-avatar guest-avatar">
+                <FiLogIn />
+              </div>
+              {!isCollapsed && (
+                <div className="user-details">
+                  <span className="user-name">Sign In / Register</span>
+                  <span className="user-role" style={{ color: 'var(--brand-primary)' }}>Save Chat History</span>
+                </div>
+              )}
+            </button>
+          )}
         </div>
       </aside>
     </>

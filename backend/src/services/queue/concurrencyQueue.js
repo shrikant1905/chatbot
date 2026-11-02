@@ -9,7 +9,7 @@ import crypto from 'crypto';
  * (Prompt caching is intentionally disabled to guarantee fresh live answers per chat).
  */
 class ConcurrencyQueue extends EventEmitter {
-  constructor({ maxConcurrency = 2 } = {}) {
+  constructor({ maxConcurrency = 100 } = {}) {
     super();
     this.maxConcurrency = maxConcurrency;
     this.activeWorkers = 0;
@@ -104,5 +104,5 @@ class ConcurrencyQueue extends EventEmitter {
 }
 
 export const concurrencyQueue = new ConcurrencyQueue({
-  maxConcurrency: parseInt(process.env.AI_MAX_CONCURRENCY || '2', 10)
+  maxConcurrency: parseInt(process.env.AI_MAX_CONCURRENCY || '100', 10)
 });

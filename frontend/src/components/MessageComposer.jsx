@@ -277,7 +277,7 @@ export function MessageComposer({
     const messageText = input.trim();
     const filesToSend = [...attachedFiles];
 
-    onSend(messageText, filesToSend, webSearchActive);
+    onSend(messageText, filesToSend, webSearchActive, imageModeActive);
 
     setInput('');
     setAttachedFiles([]);

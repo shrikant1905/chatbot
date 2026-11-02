@@ -10,6 +10,7 @@ import { FeedbackController } from '../controllers/feedbackController.js';
 import { GatewayController } from '../controllers/gatewayController.js';
 import { VisionController } from '../controllers/visionController.js';
 import { ImageController } from '../controllers/imageController.js';
+import { AuthController } from '../controllers/authController.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
@@ -22,8 +23,15 @@ apiRouter.get('/models', ModelController.listModels);
 apiRouter.get('/images/health', ImageController.health);
 apiRouter.get('/images/file/:filename', ImageController.serveFile);
 
+// Authentication Routes (Public)
+apiRouter.post('/auth/register', AuthController.register);
+apiRouter.post('/auth/login', AuthController.login);
+
 // Authenticated Routes
 apiRouter.use(authMiddleware);
+
+// Current User Session Profile
+apiRouter.get('/auth/me', AuthController.me);
 
 // Conversations
 apiRouter.get('/conversations', ConversationController.list);

@@ -48,17 +48,11 @@ export const ImageController = {
       const trimmedPrompt = prompt.trim();
       const userId = req.user?.id || 'default_user';
 
-      // 1. Verify ComfyUI server is reachable before queuing
-      const health = await checkComfyUIHealth();
-      if (!health.healthy) {
-        return res.status(503).json({
-          success: false,
-          error: `ComfyUI Stable Diffusion engine is offline or not reachable at ${config.comfyUI?.baseUrl || 'http://127.0.0.1:8188'}. Please ensure ComfyUI is running on the server.`
-        });
-      }
+      // 1. Log generation request
+      console.log(`[ImageController] Generating image for prompt: "${trimmedPrompt}"`);
 
       // 2. Direct generation execution
-      // We process the generation and deliver the high-res result
+      // We process the generation and deliver the high-res result (using ComfyUI or seamless AI fallback)
       const result = await generateComfyUIImage({
         prompt: trimmedPrompt,
         negativePrompt,
@@ -74,11 +68,18 @@ export const ImageController = {
         try {
           const conversation = await ConversationService.getConversation(conversationId);
           if (conversation) {
+            // Save User message
+            await MessageService.saveUserMessage({
+              conversationId,
+              content: `🎨 ${trimmedPrompt}`,
+              model: result.engine || 'Stable Diffusion 1.5'
+            });
+
             // Save Assistant Message containing the generated image
             savedMessage = await MessageService.saveAssistantMessage({
               conversationId,
               content: `Here is your generated image for: **"${trimmedPrompt}"**\n\n![Generated Image](${result.relativeUrl})`,
-              model: `Stable Diffusion 1.5 (${config.comfyUI?.defaultModel || 'SD 1.5'})`
+              model: result.engine || `Stable Diffusion 1.5 (${config.comfyUI?.defaultModel || 'SD 1.5'})`
             });
           }
         } catch (dbErr) {

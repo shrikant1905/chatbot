@@ -7,8 +7,9 @@ import { Background3D } from '../components/Background3D';
 import { MessageComposer } from '../components/MessageComposer';
 import { SettingsModal } from '../components/SettingsModal';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { AuthModal } from '../components/AuthModal';
 import { FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
-import { apiClient } from '../api/client';
+import { apiClient, getStoredUser, getAuthToken } from '../api/client';
 import { usePreferences } from '../hooks/usePreferences';
 import { soundEffectsManager } from '../utils/soundEffects';
 
@@ -18,6 +19,8 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
 
   // Real Conversations State
   const [conversations, setConversations] = useState([]);
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [activeChatId, setActiveChatId] = useState(null);
   const [activeConversation, setActiveConversation] = useState({
     id: null,
@@ -26,10 +29,10 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
   });
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
 
-  // Model Selection - Default to Gemma 3 (4B)
+  // Model Selection - Default to Grok Ultra Fast (700ms Instant Response)
   const [selectedModel, setSelectedModel] = useState({
-    id: 'gemma3:4b',
-    name: 'Gemma 3 (4B) 🌟 [Default]'
+    id: 'grok-4.20-0309-non-reasoning',
+    name: 'Grok 🚀 [xAI - Ultra Fast 700ms]'
   });
 
   // Composer & Generation State
@@ -84,7 +87,36 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
 
   useEffect(() => {
     refreshConversations();
+
+    // Verify token validity on load
+    const token = getAuthToken();
+    if (token) {
+      apiClient.getMe()
+        .then((res) => {
+          if (res.authenticated && res.user) {
+            setCurrentUser(res.user);
+          } else {
+            setCurrentUser(null);
+            apiClient.logout();
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
+
+  const handleAuthSuccess = (user) => {
+    setCurrentUser(user);
+    refreshConversations();
+    showToast(`Welcome back, ${user.name}!`);
+  };
+
+  const handleLogout = () => {
+    apiClient.logout();
+    setCurrentUser(null);
+    setConversations([]);
+    handleNewChat();
+    showToast('Signed out. You are now in Guest Mode.');
+  };
 
   // 2. Load single conversation with messages
   const loadConversation = async (chatId) => {
@@ -100,6 +132,22 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
       if (data.conversation) {
         setActiveChatId(data.conversation.id);
         setActiveConversation(data.conversation);
+        if (data.conversation.model) {
+          const modelId = data.conversation.model;
+          setSelectedModel((prev) => {
+            if (prev.id === modelId) return prev;
+            return {
+              id: modelId,
+              name: modelId.startsWith('grok-')
+                ? 'Grok 🚀 [xAI - Ultra Fast 700ms]'
+                : modelId.startsWith('qwen2.5')
+                ? 'Qwen 2.5 (3B) ⚡ [Fast]'
+                : modelId.startsWith('gemma3')
+                ? 'Gemma 3 (4B) 🌟 [Deep Quality]'
+                : modelId
+            };
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to load conversation:', err);
@@ -156,18 +204,37 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
       ? text.trim().slice(0, 36) + (text.trim().length > 36 ? '...' : '')
       : activeConversation.title;
 
-    // ComfyUI & Stable Diffusion 1.5 Image Generation Intercept
-    if (isImageMode || text.trim().startsWith('/image')) {
-      const prompt = text.replace(/^\/image\s*/i, '').trim();
+    // Image Generation Intent Detection (via Image Mode, /image command, or natural language prompts)
+    const rawTrimmed = text.trim();
+    const isNaturalImagePrompt =
+      /^(generate|create|draw|make|design)\s+(an?\s+)?(image|logo|photo|picture|icon|wallpaper|illustration|avatar|graphic)\b/i.test(rawTrimmed) ||
+      /\b(generate|create|draw|make|design)\s+(a\s+|an\s+)?(logo|wallpaper|image|picture|icon|photo)\b/i.test(rawTrimmed) ||
+      /\b(logo|image|picture|wallpaper|photo)\s+(bna|banao|banado|create\s+karo|generate\s+karo)\b/i.test(rawTrimmed);
+
+    if (isImageMode || rawTrimmed.startsWith('/image') || isNaturalImagePrompt) {
+      let prompt = rawTrimmed.replace(/^\/image\s*/i, '').trim();
       if (!prompt) {
         showToast('Please provide an image prompt.', 'error');
         return;
       }
 
+      // If user typed natural language like "create a logo for AI chatbot", optimize the visual prompt
+      let visualPrompt = prompt;
+      if (/^create\s+(an?\s+)?logo\s+(for\s+)?/i.test(prompt)) {
+        const subject = prompt.replace(/^create\s+(an?\s+)?logo\s+(for\s+)?/i, '').trim();
+        visualPrompt = `Professional modern vector logo for ${subject || 'AI chatbot'}, minimalist sleek emblem, clean aesthetic, iconic tech branding, vector graphics, 8k resolution`;
+      } else if (/^make\s+(an?\s+)?logo\s+(for\s+)?/i.test(prompt)) {
+        const subject = prompt.replace(/^make\s+(an?\s+)?logo\s+(for\s+)?/i, '').trim();
+        visualPrompt = `Professional modern vector logo for ${subject || 'AI chatbot'}, minimalist sleek emblem, clean aesthetic, iconic tech branding, vector graphics, 8k resolution`;
+      } else if (/^design\s+(an?\s+)?logo\s+(for\s+)?/i.test(prompt)) {
+        const subject = prompt.replace(/^design\s+(an?\s+)?logo\s+(for\s+)?/i, '').trim();
+        visualPrompt = `Professional modern vector logo for ${subject || 'AI chatbot'}, minimalist sleek emblem, clean aesthetic, iconic tech branding, vector graphics, 8k resolution`;
+      }
+
       const optimisticUserMsg = {
         id: `temp-user-${Date.now()}`,
         role: 'user',
-        content: `🎨 Generate Image: "${prompt}"`,
+        content: `🎨 ${prompt}`,
         created_at: new Date().toISOString(),
         attachments: []
       };
@@ -176,10 +243,10 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
       const initialAssistantMsg = {
         id: assistantId,
         role: 'assistant',
-        content: '🎨 Generating high-resolution image with Stable Diffusion 1.5...',
+        content: '🎨 Generating high-resolution image...',
         isStreaming: true,
         created_at: new Date().toISOString(),
-        model: 'Stable Diffusion 1.5'
+        model: 'AI Image Engine'
       };
 
       setActiveConversation((prev) => ({
@@ -190,10 +257,10 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
       }));
 
       setIsGenerating(true);
-      showToast('Generating image with Stable Diffusion 1.5...');
+      showToast('Generating image with AI Image Engine...');
 
       try {
-        const res = await apiClient.generateImage(prompt, targetConvId);
+        const res = await apiClient.generateImage(visualPrompt, targetConvId);
         if (res.success && res.image?.url) {
           const completedMsg = {
             id: res.message?.id || assistantId,
@@ -201,7 +268,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
             content: `Here is your generated image for: **"${prompt}"**`,
             isStreaming: false,
             created_at: new Date().toISOString(),
-            model: 'Stable Diffusion 1.5',
+            model: res.image?.engine || 'AI Image Engine',
             attachments: [
               {
                 id: `img-${Date.now()}`,
@@ -214,7 +281,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
               is_generated_image: true,
               image_url: res.image.url,
               filename: res.image.filename,
-              prompt
+              prompt: visualPrompt
             }
           };
 
@@ -238,7 +305,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
               ? {
                   ...m,
                   isStreaming: false,
-                  content: `⚠️ Image Generation Notice:\n${err.message}\n\n*Note: Ensure ComfyUI is running on the server ('pm2 start comfyui-engine') to generate images.*`
+                  content: `⚠️ Image Generation Notice:\n${err.message}`
                 }
               : m
           )
@@ -332,6 +399,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
         stream: true,
         webSearch,
         attachmentIds,
+        history: activeConversation.messages,
         signal: abortControllerRef.current.signal,
         onChunk: (delta) => {
           targetBuffer += delta;
@@ -369,8 +437,10 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
         soundEffectsManager.playReceive();
       }
 
-      // Refresh sidebar list to reflect any new titles
-      await refreshConversations(targetConvId);
+      // Refresh sidebar list for logged-in users to reflect new titles
+      if (currentUser) {
+        await refreshConversations(targetConvId);
+      }
     } catch (err) {
       if (streamTimer) {
         clearInterval(streamTimer);
@@ -519,6 +589,9 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Workspace Area */}
@@ -569,6 +642,14 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
           onStopGeneration={handleStopGeneration}
         />
       </main>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        onShowToast={showToast}
+      />
 
       {/* Settings Modal */}
       <SettingsModal

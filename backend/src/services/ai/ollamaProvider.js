@@ -45,6 +45,7 @@ export class OllamaProvider extends AiProviderInterface {
    */
   async _ensureDedicatedRam(targetModel) {
     try {
+      const normTarget = (targetModel || '').replace(/:latest$/, '');
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 1200);
       const res = await fetch(`${this.baseUrl}/api/ps`, { signal: controller.signal });
@@ -55,7 +56,8 @@ export class OllamaProvider extends AiProviderInterface {
       const runningModels = data.models || [];
       for (const m of runningModels) {
         const mName = m.name || m.model || '';
-        if (mName && mName !== targetModel) {
+        const normName = mName.replace(/:latest$/, '');
+        if (normName && normName !== normTarget) {
           console.log(`[RAM HYGIENE] Unloading inactive model ${mName} to give 100% RAM to ${targetModel}...`);
           fetch(`${this.baseUrl}/api/generate`, {
             method: 'POST',

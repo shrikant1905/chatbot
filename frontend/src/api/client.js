@@ -20,12 +20,53 @@ export function getOrCreateClientId() {
   }
 }
 
+export function getAuthToken() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('kiaan_auth_token') || null;
+}
+
+export function setAuthToken(token) {
+  if (typeof window === 'undefined') return;
+  if (token) {
+    localStorage.setItem('kiaan_auth_token', token);
+  } else {
+    localStorage.removeItem('kiaan_auth_token');
+  }
+}
+
+export function getStoredUser() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('kiaan_auth_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user) {
+  if (typeof window === 'undefined') return;
+  if (user) {
+    localStorage.setItem('kiaan_auth_user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('kiaan_auth_user');
+  }
+}
+
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
+  const token = getAuthToken();
+
   const headers = {
-    'X-User-Id': getOrCreateClientId(),
     ...options.headers
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (!endpoint.startsWith('/auth/')) {
+    headers['X-Guest-Mode'] = 'true';
+    headers['X-User-Id'] = getOrCreateClientId();
+  }
 
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
@@ -51,6 +92,38 @@ async function request(endpoint, options = {}) {
 }
 
 export const apiClient = {
+  // Authentication
+  login: async (email, password) => {
+    const res = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    if (res.token) {
+      setAuthToken(res.token);
+      setStoredUser(res.user);
+    }
+    return res;
+  },
+
+  register: async (name, email, password) => {
+    const res = await request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password })
+    });
+    if (res.token) {
+      setAuthToken(res.token);
+      setStoredUser(res.user);
+    }
+    return res;
+  },
+
+  getMe: () => request('/auth/me'),
+
+  logout: () => {
+    setAuthToken(null);
+    setStoredUser(null);
+  },
+
   // Health & Models
   getHealth: () => request('/health'),
   getModels: () => request('/models'),
@@ -78,13 +151,26 @@ export const apiClient = {
     }),
 
   // Message Sending with SSE Streaming Support
-  sendMessage: async ({ conversationId, content, model, stream = true, webSearch = false, attachmentIds = [], onChunk, signal }) => {
+  sendMessage: async ({ conversationId, content, model, stream = true, webSearch = false, attachmentIds = [], history = [], onChunk, signal }) => {
     const url = `${BASE_URL}/conversations/${conversationId}/messages`;
+    const token = getAuthToken();
+
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      headers['X-Guest-Mode'] = 'true';
+      headers['X-User-Id'] = getOrCreateClientId();
+    }
 
     if (!stream) {
       return request(`/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ content, model, stream: false, webSearch, attachmentIds }),
+        headers,
+        body: JSON.stringify({ content, model, stream: false, webSearch, attachmentIds, history }),
         signal
       });
     }
@@ -92,11 +178,8 @@ export const apiClient = {
     // SSE Streaming
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Id': getOrCreateClientId()
-      },
-      body: JSON.stringify({ content, model, stream: true, webSearch, attachmentIds }),
+      headers,
+      body: JSON.stringify({ content, model, stream: true, webSearch, attachmentIds, history }),
       signal
     });
 
@@ -151,7 +234,7 @@ export const apiClient = {
             throw new Error(parsed.error || 'AI generation encountered an error.');
           }
         } catch (e) {
-          if (e.message?.includes('AI generation') || e.message?.includes('Ollama')) {
+          if (e.message?.includes('AI generation') || e.message?.includes('Ollama') || e.message?.includes('xAI')) {
             throw e;
           }
         }
@@ -161,20 +244,19 @@ export const apiClient = {
     return result;
   },
 
-  // Regenerate Response
-  regenerateMessage: (conversationId, model) =>
+  regenerateMessage: (conversationId, model, history = []) =>
     request(`/conversations/${conversationId}/regenerate`, {
       method: 'POST',
-      body: JSON.stringify({ model })
+      body: JSON.stringify({ model, history })
     }),
 
   // File Attachments
-  uploadFiles: async (conversationId, files) => {
+  uploadFiles: (conversationId, files) => {
     const formData = new FormData();
-    formData.append('conversationId', conversationId);
     for (const file of files) {
       formData.append('files', file);
     }
+    formData.append('conversationId', conversationId);
     return request('/attachments/upload', {
       method: 'POST',
       body: formData
@@ -185,8 +267,6 @@ export const apiClient = {
     request(`/attachments/${id}`, {
       method: 'DELETE'
     }),
-
-  getAttachmentFileUrl: (id) => `${BASE_URL}/attachments/${id}/file`,
 
   // Search & History
   search: (query, limit = 20) => request(`/search?q=${encodeURIComponent(query)}&limit=${limit}`),

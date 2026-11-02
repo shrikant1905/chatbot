@@ -603,6 +603,116 @@
   margin-top: 1px;
 }
 
+/* User Profile Container & Logout */
+.user-profile-tile-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.user-profile-tile-container .user-profile-tile {
+  flex: 1;
+}
+
+.sidebar-logout-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.sidebar-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* Guest Sign In Button */
+.sidebar-guest-signin-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px dashed rgba(99, 102, 241, 0.35);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-guest-signin-btn:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: var(--brand-primary);
+}
+
+.guest-avatar {
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important;
+  font-size: 1rem !important;
+}
+
+/* Sidebar Guest Card (In Conversation List) */
+.sidebar-guest-card {
+  margin: 14px 10px;
+  padding: 12px 14px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-guest-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #38bdf8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-guest-card p {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.sidebar-auth-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--brand-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.sidebar-auth-cta:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
 /* Mobile Sidebar Drawer Overlay */
 .sidebar-backdrop {
   display: none;

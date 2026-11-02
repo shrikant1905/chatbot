@@ -26,9 +26,9 @@ export function ChatHeader({
   onSelectModel
 }) {
   const [models, setModels] = useState([
-    { id: 'gemma3:4b', name: 'Gemma 3 (4B) 🌟 [Default]', description: 'Google Gemma 3 - Deep reasoning, rich formatting & high quality', tag: 'Default' },
     { id: 'grok-4.20-0309-non-reasoning', name: 'Grok 🚀 [xAI - Ultra Fast 700ms]', description: 'xAI Grok high speed conversational intelligence', tag: 'Fast' },
     { id: 'grok-4.3', name: 'Grok 4.3 🧠 [xAI - Deep Reasoning]', description: 'xAI Grok 4.3 advanced multi-step reasoning', tag: 'Smart' },
+    { id: 'gemma3:4b', name: 'Gemma 3 (4B) 🌟 [Deep Quality]', description: 'Google Gemma 3 - Deep reasoning, rich formatting & high quality', tag: 'Quality' },
     { id: 'qwen2.5:3b', name: 'Qwen 2.5 (3B) ⚡ [Fast]', description: 'Ultra-fast conversational model with instant replies', tag: 'Fast' },
     { id: 'qwen3:1.7b', name: 'Qwen 3 (1.7B) 💡 [Fast Reasoning]', description: 'Fast local reasoning model on VPS', tag: 'Smart' },
     { id: 'qwen3:4b', name: 'Qwen 3 (4B) 🧠 [Deep Reasoning]', description: 'Heavy 4B model (complex logic)', tag: 'Deep' },
