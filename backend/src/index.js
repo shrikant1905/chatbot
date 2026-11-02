@@ -2,11 +2,15 @@ import { createApp } from './app.js';
 import { config } from './config/index.js';
 import { runMigrations } from './db/migrate.js';
 import { closePool } from './db/pool.js';
+import { initializeQueueServices, closeAllQueueServices } from './services/queue/index.js';
 
 async function bootstrap() {
   try {
     console.log('[Startup] Running database migrations...');
     await runMigrations();
+
+    // Initialize BullMQ worker & Redis connections (with automatic in-memory fallback)
+    initializeQueueServices();
 
     const app = createApp();
 
@@ -22,6 +26,7 @@ async function bootstrap() {
     const shutdown = async (signal) => {
       console.log(`\n[Shutdown] Received ${signal}, closing server gracefully...`);
       server.close(async () => {
+        await closeAllQueueServices();
         await closePool();
         console.log('[Shutdown] Database connections closed. Process exited.');
         process.exit(0);
@@ -37,4 +42,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-

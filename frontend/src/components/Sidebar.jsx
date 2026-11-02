@@ -97,10 +97,14 @@ export function Sidebar({
           <div
             className="brand-wrapper"
             onClick={() => {
-              onNewChat();
-              if (isMobileOpen) onCloseMobile();
+              if (isCollapsed) {
+                onToggleCollapse();
+              } else {
+                onNewChat();
+                if (isMobileOpen) onCloseMobile();
+              }
             }}
-            title="Start new conversation"
+            title={isCollapsed ? "Click to expand sidebar" : "Start new conversation"}
           >
             <div className="brand-logo-container">
               <img
@@ -108,6 +112,11 @@ export function Sidebar({
                 alt="Kiaan AI"
                 className="sidebar-brand-orb"
               />
+              {isCollapsed && (
+                <div className="collapsed-expand-badge" title="Expand sidebar">
+                  <FiChevronRight />
+                </div>
+              )}
             </div>
             {!isCollapsed && (
               <div className="brand-info">
@@ -130,15 +139,17 @@ export function Sidebar({
             <FiX fontSize={20} />
           </button>
 
-          {/* Desktop Collapse Toggle (< / >) */}
-          <button
-            className="sidebar-toggle-btn desktop-only"
-            onClick={onToggleCollapse}
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
-          </button>
+          {/* Desktop Collapse Toggle (<) - Only visible when sidebar is expanded */}
+          {!isCollapsed && (
+            <button
+              className="sidebar-toggle-btn desktop-only"
+              onClick={onToggleCollapse}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+            >
+              <FiChevronLeft />
+            </button>
+          )}
         </div>
 
         {/* Action Area: New Chat & Search */}
@@ -149,7 +160,8 @@ export function Sidebar({
               onNewChat();
               if (isMobileOpen) onCloseMobile();
             }}
-            title="New Conversation (Ctrl + K)"
+            aria-label="New chat"
+            title={isCollapsed ? "New Chat (Ctrl+K)" : "New Conversation (Ctrl + K)"}
           >
             <FiPlus fontSize={18} />
             {!isCollapsed && (
@@ -169,6 +181,7 @@ export function Sidebar({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="search-input"
+                aria-label="Search conversation history"
               />
               {searchQuery && (
                 <button
@@ -207,17 +220,14 @@ export function Sidebar({
                         if (isMobileOpen) onCloseMobile();
                       }}
                       title={chat.title}
-                      role="button"
-                      tabIndex={0}
                     >
                       <div className="conversation-item-content">
                         <FiMessageSquare className="conversation-item-icon" />
-
                         {!isCollapsed && (
                           <>
                             {isEditing ? (
                               <div
-                                style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}
+                                className="conversation-edit-form"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <input
@@ -231,7 +241,7 @@ export function Sidebar({
                                 <button
                                   className="conversation-action-btn"
                                   onClick={() => handleSaveRename(chat.id)}
-                                  title="Save rename"
+                                  title="Save"
                                 >
                                   <FiCheck />
                                 </button>
@@ -280,25 +290,24 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Sidebar Footer with dedicated Settings row & Profile Card */}
+        {/* Sidebar Footer with Settings & Profile */}
         <div className="sidebar-footer">
-          {/* Settings Row (matches screenshot) */}
           <button
             className="sidebar-settings-btn"
             onClick={onOpenSettings}
+            aria-label="Settings"
             title="Settings"
           >
             <FiSliders className="sidebar-settings-icon" />
             {!isCollapsed && <span>Settings</span>}
           </button>
 
-          {/* User Profile Card (matches screenshot) */}
           <div
             className="user-profile-tile"
             onClick={onOpenSettings}
             role="button"
             tabIndex={0}
-            title="Account & Settings"
+            title="Alex Morgan (Workspace Member)"
           >
             <div className="user-avatar">
               <span>AM</span>

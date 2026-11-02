@@ -39,8 +39,76 @@
 }
 
 .sidebar.collapsed .sidebar-header {
-  padding: 16px 10px;
+  padding: 14px 8px;
+  display: flex;
   justify-content: center;
+  align-items: center;
+}
+
+.sidebar.collapsed .brand-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: none;
+  overflow: visible;
+}
+
+.sidebar.collapsed .brand-logo-container {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.sidebar.collapsed .brand-wrapper:hover .brand-logo-container {
+  transform: scale(1.08);
+}
+
+.sidebar.collapsed .sidebar-brand-orb {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(99, 102, 241, 0.45));
+  transition: filter var(--transition-fast);
+}
+
+.sidebar.collapsed .brand-wrapper:hover .sidebar-brand-orb {
+  filter: drop-shadow(0 4px 14px rgba(99, 102, 241, 0.75));
+}
+
+.collapsed-expand-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 1.5px solid #0b0f19;
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.sidebar.collapsed .brand-wrapper:hover .collapsed-expand-badge {
+  transform: scale(1.15);
+  background: #7c3aed;
+}
+
+[data-theme="light"] .collapsed-expand-badge {
+  border-color: #ffffff;
 }
 
 .brand-wrapper {
@@ -304,6 +372,20 @@
   color: #a5b4fc;
 }
 
+.sidebar.collapsed .conversation-item {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 12px;
+  margin: 0 auto;
+}
+
+.sidebar.collapsed .conversation-item-content {
+  justify-content: center;
+  width: 100%;
+}
+
 /* Active Conversation Item (Matches Reference Screenshot Pixel-Perfect) */
 .conversation-item.active {
   background-color: rgba(30, 41, 59, 0.55);
@@ -542,7 +624,7 @@
   height: 100%;
   position: relative;
   overflow: hidden;
-  background: var(--bg-app);
+  background: transparent;
 }
 
 /* Chat Header */
@@ -553,8 +635,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-app);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 15, 25, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 20;
 }
 
@@ -900,4 +984,233 @@
     max-width: 320px !important;
     max-height: min(340px, calc(100dvh - 110px)) !important;
   }
+}
+
+
+/* ==========================================================================
+   3D Animated Wallpaper & Perspective Mesh System
+   ========================================================================== */
+.bg-3d-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  perspective: 1000px;
+  background-color: #08090e;
+}
+
+/* Base Wallpaper Layer with breathing motion & 3D image */
+.bg-3d-wallpaper {
+  position: absolute;
+  inset: -25px;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(9, 10, 16, 0.3) 0%, rgba(9, 10, 16, 0.82) 100%),
+    url('/assets/chat-3d-wallpaper.jpg');
+  background-size: cover;
+  background-position: center;
+  filter: contrast(110%) brightness(95%);
+  animation: wallpaperFloat 24s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes wallpaperFloat {
+  0% { transform: scale(1) translate3d(0, 0, 0); }
+  50% { transform: scale(1.035) translate3d(-8px, -6px, 0); }
+  100% { transform: scale(1.02) translate3d(6px, 5px, 0); }
+}
+
+/* 3D Depth Floating Light Orbs */
+.bg-3d-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.45;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.orb-primary {
+  width: 520px;
+  height: 520px;
+  top: -120px;
+  left: 20%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.5) 0%, rgba(99, 102, 241, 0) 70%);
+  animation: floatOrbPrimary 18s ease-in-out infinite alternate;
+}
+
+.orb-cyan {
+  width: 440px;
+  height: 440px;
+  bottom: 80px;
+  right: 5%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.4) 0%, rgba(6, 182, 212, 0) 70%);
+  animation: floatOrbCyan 22s ease-in-out infinite alternate;
+}
+
+.orb-violet {
+  width: 480px;
+  height: 480px;
+  bottom: -100px;
+  left: 5%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.38) 0%, rgba(168, 85, 247, 0) 70%);
+  animation: floatOrbViolet 20s ease-in-out infinite alternate;
+}
+
+.orb-amber {
+  width: 320px;
+  height: 320px;
+  top: 35%;
+  right: 25%;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.28) 0%, rgba(236, 72, 153, 0) 70%);
+  animation: floatOrbAmber 26s ease-in-out infinite alternate;
+}
+
+@keyframes floatOrbPrimary {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(60px, 40px, 0) scale(1.15); }
+  100% { transform: translate3d(-40px, 80px, 0) scale(0.92); }
+}
+
+@keyframes floatOrbCyan {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-70px, -50px, 0) scale(1.18); }
+  100% { transform: translate3d(40px, -30px, 0) scale(0.95); }
+}
+
+@keyframes floatOrbViolet {
+  0% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50% { transform: translate3d(50px, -60px, 0) scale(1.2); }
+  100% { transform: translate3d(-30px, 40px, 0) scale(1.05); }
+}
+
+@keyframes floatOrbAmber {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.25; }
+  50% { transform: translate3d(-50px, 40px, 0) scale(1.22); opacity: 0.38; }
+  100% { transform: translate3d(40px, -50px, 0) scale(0.9); opacity: 0.22; }
+}
+
+/* 3D Perspective Cybernetic Grid Plane */
+.bg-3d-grid-plane {
+  position: absolute;
+  bottom: -40%;
+  left: -50%;
+  width: 200%;
+  height: 120%;
+  transform: perspective(450px) rotateX(68deg) translateZ(0);
+  transform-origin: center bottom;
+  opacity: 0.32;
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 85%);
+  pointer-events: none;
+}
+
+.bg-3d-grid-lines {
+  width: 100%;
+  height: 100%;
+  background-size: 60px 60px;
+  background-image: 
+    linear-gradient(to right, rgba(99, 102, 241, 0.28) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.28) 1px, transparent 1px);
+  animation: gridDrift 20s linear infinite;
+}
+
+@keyframes gridDrift {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(60px); }
+}
+
+/* Floating 3D Cosmic Stardust Particles */
+.bg-3d-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.p-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(99, 102, 241, 0.6);
+  opacity: 0;
+  animation: particleRise 14s ease-in-out infinite;
+}
+
+.dot-1 { width: 3px; height: 3px; left: 12%; bottom: 10%; animation-delay: 0s; animation-duration: 16s; }
+.dot-2 { width: 4px; height: 4px; left: 28%; bottom: 15%; animation-delay: 2.5s; animation-duration: 18s; }
+.dot-3 { width: 2px; height: 2px; left: 45%; bottom: 5%; animation-delay: 4s; animation-duration: 14s; }
+.dot-4 { width: 5px; height: 5px; left: 62%; bottom: 20%; animation-delay: 1.2s; animation-duration: 20s; }
+.dot-5 { width: 3px; height: 3px; left: 78%; bottom: 8%; animation-delay: 5s; animation-duration: 17s; }
+.dot-6 { width: 4px; height: 4px; left: 88%; bottom: 25%; animation-delay: 3s; animation-duration: 19s; }
+.dot-7 { width: 2px; height: 2px; left: 20%; bottom: 30%; animation-delay: 7s; animation-duration: 15s; }
+.dot-8 { width: 3px; height: 3px; left: 52%; bottom: 12%; animation-delay: 8.5s; animation-duration: 21s; }
+.dot-9 { width: 4px; height: 4px; left: 35%; bottom: 18%; animation-delay: 6s; animation-duration: 16s; }
+.dot-10 { width: 2px; height: 2px; left: 72%; bottom: 28%; animation-delay: 9s; animation-duration: 18s; }
+
+@keyframes particleRise {
+  0% { transform: translate3d(0, 0, 0) scale(0.6); opacity: 0; }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.6; }
+  100% { transform: translate3d(20px, -650px, 0) scale(1.2); opacity: 0; }
+}
+
+/* Radial Vignette & Glass Contrast Shield */
+.bg-3d-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 80% at 50% 50%, rgba(9, 10, 16, 0.2) 0%, rgba(9, 10, 16, 0.72) 100%);
+  pointer-events: none;
+}
+
+/* Light Theme Adaptations for 3D Background */
+[data-theme="light"] .bg-3d-scene {
+  background-color: #f8fafc;
+}
+
+[data-theme="light"] .bg-3d-wallpaper {
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(248, 250, 252, 0.15) 0%, rgba(248, 250, 252, 0.65) 100%),
+    url('/assets/chat-3d-wallpaper-light.jpg') !important;
+  background-size: cover;
+  background-position: center;
+  filter: contrast(106%) brightness(102%);
+}
+
+[data-theme="light"] .bg-3d-grid-plane {
+  opacity: 0.22;
+}
+
+[data-theme="light"] .bg-3d-grid-lines {
+  background-image: 
+    linear-gradient(to right, rgba(99, 102, 241, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.22) 1px, transparent 1px);
+}
+
+[data-theme="light"] .bg-3d-vignette {
+  background: radial-gradient(ellipse 90% 80% at 50% 50%, rgba(255, 255, 255, 0.1) 0%, rgba(241, 245, 249, 0.5) 100%);
+}
+
+[data-theme="light"] .orb-primary {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.24) 0%, rgba(99, 102, 241, 0) 70%);
+}
+
+[data-theme="light"] .orb-cyan {
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, rgba(6, 182, 212, 0) 70%);
+}
+
+[data-theme="light"] .orb-violet {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.18) 0%, rgba(168, 85, 247, 0) 70%);
+}
+
+[data-theme="light"] .orb-amber {
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.15) 0%, rgba(236, 72, 153, 0) 70%);
+}
+
+[data-theme="light"] .chat-header {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
+  backdrop-filter: blur(16px);
 }

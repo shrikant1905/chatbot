@@ -3,8 +3,71 @@ import { MessageService } from '../services/messageService.js';
 import { ConversationService } from '../services/conversationService.js';
 import { AttachmentService } from '../services/attachmentService.js';
 import { MemoryService } from '../services/memoryService.js';
-import { getAiProvider } from '../services/ai/index.js';
+import { getAiProvider, resolveAiProvider } from '../services/ai/index.js';
 import { getPool } from '../db/pool.js';
+import { isBullMQActive, enqueueAiJob, AiStreamBridge } from '../services/queue/index.js';
+
+/**
+ * Dispatches AI generation via BullMQ distributed queue (when Redis is available)
+ * or seamlessly falls back to direct in-memory concurrency queue.
+ */
+async function dispatchAiGeneration({
+  jobId,
+  conversationId,
+  userId,
+  model,
+  messages,
+  attachments,
+  userMemories,
+  webSearch,
+  stream,
+  onChunk,
+  signal
+}) {
+  const aiProvider = resolveAiProvider(model);
+
+  // If BullMQ + Redis is active, dispatch as a background queue job
+  if (isBullMQActive()) {
+    try {
+      const streamPromise = new Promise((resolve, reject) => {
+        AiStreamBridge.subscribe(jobId, {
+          onChunk,
+          onDone: resolve,
+          onError: reject
+        }).catch(reject);
+      });
+
+      await enqueueAiJob({
+        jobId,
+        conversationId,
+        userId,
+        model,
+        messages,
+        attachments,
+        userMemories,
+        webSearch,
+        stream
+      });
+
+      return await streamPromise;
+    } catch (queueErr) {
+      console.warn(`[BullMQ Dispatch] Enqueue error, falling back to direct inference:`, queueErr.message);
+      // Fallback seamlessly to direct execution below
+    }
+  }
+
+  // Fallback: Direct execution via in-memory concurrencyQueue
+  return aiProvider.generateResponse({
+    model,
+    messages,
+    attachments,
+    userMemories,
+    webSearch,
+    stream,
+    onChunk,
+    signal
+  });
+}
 
 export class MessageController {
   static async sendMessage(req, res, next) {
@@ -73,13 +136,16 @@ export class MessageController {
       const contextMessages = await MessageService.buildConversationContext(conversationId, 6);
       const userMemories = await MemoryService.getMemories(req.user.id);
 
-      // 6. Get AI Provider
-      const aiProvider = getAiProvider();
+      // 6. Generate unique Job ID and setup abort handler
+      const jobId = `job_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       const abortController = new AbortController();
 
       req.on('close', () => {
         if (!res.writableEnded) {
           abortController.abort();
+          if (isBullMQActive()) {
+            AiStreamBridge.publishAbort(jobId);
+          }
         }
       });
 
@@ -97,7 +163,10 @@ export class MessageController {
         let accumulatedContent = '';
 
         try {
-          const aiResult = await aiProvider.generateResponse({
+          const aiResult = await dispatchAiGeneration({
+            jobId,
+            conversationId,
+            userId: req.user.id,
             model: model || 'kiaan-ultra',
             messages: contextMessages,
             attachments: attachmentsData,
@@ -149,7 +218,10 @@ export class MessageController {
       } else {
         // Non-streaming standard response
         try {
-          const aiResult = await aiProvider.generateResponse({
+          const aiResult = await dispatchAiGeneration({
+            jobId,
+            conversationId,
+            userId: req.user.id,
             model: model || 'kiaan-ultra',
             messages: contextMessages,
             attachments: attachmentsData,
@@ -224,11 +296,15 @@ export class MessageController {
 
       const contextMessages = await MessageService.buildConversationContext(conversationId, 10);
       const userMemories = await MemoryService.getMemories(req.user.id);
-      const aiProvider = getAiProvider();
+      const jobId = `regen_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
-      const aiResult = await aiProvider.generateResponse({
+      const aiResult = await dispatchAiGeneration({
+        jobId,
+        conversationId,
+        userId: req.user.id,
         model: model || 'kiaan-ultra',
         messages: contextMessages,
+        attachments: [],
         userMemories,
         webSearch: false,
         stream: false

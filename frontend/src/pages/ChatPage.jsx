@@ -3,6 +3,7 @@ import { Sidebar } from '../components/Sidebar';
 import { ChatHeader } from '../components/ChatHeader';
 import { WelcomeScreen } from '../components/WelcomeScreen';
 import { ChatMessage } from '../components/ChatMessage';
+import { Background3D } from '../components/Background3D';
 import { MessageComposer } from '../components/MessageComposer';
 import { SettingsModal } from '../components/SettingsModal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -428,6 +429,7 @@ export function ChatPage({ activeTheme, themeMode, setThemeMode, onToggleTheme }
 
       {/* Main Workspace Area */}
       <main className="main-workspace">
+        <Background3D activeTheme={activeTheme} />
         <ChatHeader
           activeConversation={activeConversation}
           activeTheme={activeTheme}

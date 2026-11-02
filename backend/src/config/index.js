@@ -26,11 +26,23 @@ export const config = {
     ollamaDefaultModel: process.env.OLLAMA_DEFAULT_MODEL || 'gemma3:4b',
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     openaiApiKey: process.env.OPENAI_API_KEY || '',
-    openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+    openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+    grokApiKey: process.env.GROK_API_KEY || '',
+    grokBaseUrl: process.env.GROK_BASE_URL || 'https://api.x.ai/v1',
+    grokDefaultModel: process.env.GROK_DEFAULT_MODEL || 'grok-4.20-0309-non-reasoning'
   },
   tavily: {
     apiKey: process.env.TAVILY_API_KEY || '',
     enabled: process.env.TAVILY_SEARCH_ENABLED === 'true'
+  },
+  redis: {
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    password: process.env.REDIS_PASSWORD || undefined,
+    enabled: process.env.AI_QUEUE_ENABLED === 'true',
+    concurrency: parseInt(process.env.AI_QUEUE_CONCURRENCY || '1', 10),
+    attempts: parseInt(process.env.AI_QUEUE_ATTEMPTS || '2', 10),
+    backoffDelay: parseInt(process.env.AI_QUEUE_BACKOFF || '3000', 10)
   },
   upload: {
     dir: path.resolve(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads'),

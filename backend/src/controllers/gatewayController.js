@@ -1,6 +1,6 @@
 import { ManifestService } from '../services/manifestService.js';
 import { ToolRegistry } from '../services/tools/toolRegistry.js';
-import { concurrencyQueue } from '../services/queue/concurrencyQueue.js';
+import { concurrencyQueue, getAiQueueMetrics } from '../services/queue/index.js';
 
 export class GatewayController {
   /**
@@ -79,8 +79,15 @@ export class GatewayController {
    */
   static async getQueueMetrics(req, res, next) {
     try {
-      const metrics = concurrencyQueue.getMetrics();
-      res.json({ success: true, metrics });
+      const concurrencyMetrics = concurrencyQueue.getMetrics();
+      const bullmqMetrics = await getAiQueueMetrics();
+      res.json({
+        success: true,
+        metrics: {
+          ...concurrencyMetrics,
+          bullmq: bullmqMetrics
+        }
+      });
     } catch (err) {
       next(err);
     }

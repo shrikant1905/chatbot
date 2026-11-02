@@ -2,7 +2,7 @@ import fs from 'fs';
 import { testConnection } from '../db/pool.js';
 import { getAiProvider } from '../services/ai/index.js';
 import { config } from '../config/index.js';
-import { concurrencyQueue } from '../services/queue/concurrencyQueue.js';
+import { concurrencyQueue, getAiQueueMetrics } from '../services/queue/index.js';
 
 export class HealthController {
   static async check(req, res) {
@@ -49,7 +49,8 @@ export class HealthController {
         nodeVersion: process.version,
         environment: config.env,
         uptimeSeconds: Math.floor(process.uptime()),
-        gatewayQueue: concurrencyQueue.getMetrics()
+        gatewayQueue: concurrencyQueue.getMetrics(),
+        bullmqQueue: await getAiQueueMetrics()
       }
     });
   }
