@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { HealthController } from '../controllers/healthController.js';
 import { ModelController } from '../controllers/modelController.js';
 import { ConversationController } from '../controllers/conversationController.js';
@@ -22,6 +24,18 @@ apiRouter.get('/health/benchmark', HealthController.benchmark);
 apiRouter.get('/models', ModelController.listModels);
 apiRouter.get('/images/health', ImageController.health);
 apiRouter.get('/images/file/:filename', ImageController.serveFile);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logoFilePath = path.resolve(__dirname, '../../../frontend/public/assets/kiaan-orb-3d.png');
+
+// Public App Icon Logo Endpoints
+apiRouter.get('/app-icon', (req, res) => res.sendFile(logoFilePath));
+apiRouter.get('/app-icon/download', (req, res) => {
+  res.download(logoFilePath, 'kiaan-ai-logo.png', (err) => {
+    if (err) res.status(404).json({ success: false, error: 'Logo file not found' });
+  });
+});
 
 // Authentication Routes (Public)
 apiRouter.post('/auth/register', AuthController.register);
